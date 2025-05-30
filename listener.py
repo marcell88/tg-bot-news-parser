@@ -1,7 +1,12 @@
 import time
 from telethon import TelegramClient, events
 
-INPUT_CHANNEL = "@bbbreaking"
+INPUT_CHANNEL = [
+    "@bbbreaking",
+    "@mash",
+    "@rian_ru",
+]
+
 OUTPUT_CHANNEL = "@NewsFeedProcessing_bot"
 
 api_id = '25491744'
