@@ -9,6 +9,7 @@ INPUT_CHANNEL = [
     "@newssmartlab",
     "@vedomosti",
     "@shuohuaxia",
+    "@rt_russian",
 ]
 
 OUTPUT_CHANNEL = "@NewsFeedProcessing_bot"
