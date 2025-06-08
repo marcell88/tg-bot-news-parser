@@ -3,15 +3,7 @@ from telethon import TelegramClient, events
 
 INPUT_CHANNEL = [
     "@bbbreaking",
-    "@mash",
-    "@rian_ru",
-    "@tass_agency",
-    "@newssmartlab",
-    "@vedomosti",
-    "@shuohuaxia",
-    "@rt_russian",
-    "@needleraw",
-    "@Metals_Mining",
+    "@mash"
 ]
 
 OUTPUT_CHANNEL = "@NewsFeedProcessing_bot"
