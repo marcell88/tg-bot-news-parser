@@ -4,7 +4,6 @@ from telethon import TelegramClient, events
 INPUT_CHANNEL = [
     "@bbbreaking",
     "@mash",
-    "@rian_ru",
     "@vedomosti",
     "@rbc_news"
 ]
