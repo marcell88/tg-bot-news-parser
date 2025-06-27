@@ -5,7 +5,7 @@ INPUT_CHANNEL = [
     "@bbbreaking",
     "@mash",
     "@vedomosti",
-    "@rbc_news",
+    "@rbc_news"
 ]
 
 OUTPUT_CHANNEL = "@NewsFeedProcessing_bot"
