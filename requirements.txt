@@ -40,4 +40,3 @@ Telethon==1.40.0
 urllib3==2.4.0
 wrapt==1.17.2
 yandexcloud==0.347.0
-yappa==0.4.30
