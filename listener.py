@@ -206,6 +206,9 @@ class TelegramForwarder:
         except Exception as e:
             logging.error(f"Ошибка при обработке сообщения из приватной группы: {e}", exc_info=True)
 
+
+
+
     async def _message_event_handler(self, event: events.NewMessage.Event):
         """
         Обработчик новых сообщений с усовершенствованной логикой пересылки.
@@ -220,7 +223,6 @@ class TelegramForwarder:
             text_content = message.text or message.caption or ""
 
             if not chat or not text_content.strip():
-                # Игнорируем сообщения без чата или без текста
                 if not chat:
                     logging.debug("Получено событие без объекта чата (возможно, системное сообщение).")
                 if not text_content.strip():
@@ -230,13 +232,12 @@ class TelegramForwarder:
             chat_username = getattr(chat, 'username', '').lower()
             chat_id_str = str(getattr(chat, 'id', ''))
             
-            # Проверяем, пришло ли сообщение из мониторящегося канала
             is_monitored_channel = (chat_username and chat_username in self.monitored_channel_identifiers) or \
                                    (chat_id_str and chat_id_str in self.monitored_channel_identifiers)
             
             if not is_monitored_channel:
                 logging.debug(f"Сообщение из немониторящегося канала: {getattr(chat, 'title', chat_id_str)}")
-                return # Игнорируем сообщения из немониторящихся каналов
+                return
 
             source_channel_title = getattr(chat, 'title', f'Channel @{chat_username}' if chat_username else f'Channel ID:{chat_id_str}')
 
@@ -249,7 +250,6 @@ class TelegramForwarder:
             # Сценарий 1: Сообщение является оригинальным (НЕ пересланным)
             if not message.fwd_from:
                 logging.info(f"Обнаружено оригинальное сообщение из '{source_channel_title}'.")
-                # Ссылка на само сообщение в мониторящемся канале
                 message_link = await self._get_original_message_link(chat, message.id)
                 if message_link:
                     message_to_queue['link'] = message_link
@@ -259,50 +259,50 @@ class TelegramForwarder:
                 self.message_queue.append(message_to_queue)
                 logging.info(f"Добавлено оригинальное сообщение в очередь из '{source_channel_title}'.")
 
-            # Сценарий 2: Сообщение было переслано (forwarded)
+            # Сценарий 2: Сообщение было переслано (forwarded) - ИЗМЕНЕННАЯ ЛОГИКА
             else:
                 logging.info(f"Обнаружено пересланное сообщение в '{source_channel_title}'.")
                 original_source_title = "Неизвестный источник"
                 original_message_link = None
-
                 fwd_from = message.fwd_from
-                
-                # Попытка получить информацию об оригинальном канале/пользователе
-                if fwd_from.from_id: # Если есть ID отправителя (пользователь или канал)
-                    try:
-                        # Получаем Entity оригинального источника
-                        original_entity = await self.client.get_entity(fwd_from.from_id)
-                        original_source_title = getattr(original_entity, 'title', getattr(original_entity, 'first_name', 'Неизвестный'))
-                        
-                        # Если это канал и есть ID сообщения, генерируем ссылку на оригинал
-                        if isinstance(original_entity, Channel) and fwd_from.channel_post:
-                            original_message_link = await self._get_original_message_link(original_entity, fwd_from.channel_post)
-                        elif isinstance(original_entity, User) and fwd_from.date: # Если от пользователя, дата может быть единственным идентификатором
-                             # Ссылки на сообщения от пользователей в большинстве случаев не публичные
-                             original_message_link = f"Пользователь: {original_source_title}"
 
-                    except Exception as e:
-                        logging.warning(f"Не удалось получить entity оригинального источника ({fwd_from.from_id}): {e}")
-                elif fwd_from.channel_post and fwd_from.channel_id: # Если есть только ID канала и поста
-                    try:
-                        original_entity = await self.client.get_entity(fwd_from.channel_id)
-                        original_source_title = getattr(original_entity, 'title', f'Channel ID:{fwd_from.channel_id}')
-                        original_message_link = await self._get_original_message_link(original_entity, fwd_from.channel_post)
-                    except Exception as e:
-                        logging.warning(f"Не удалось получить entity оригинального канала ({fwd_from.channel_id}): {e}")
-                
-                # Добавляем информацию об оригинальном источнике в текст сообщения
-                # Мы не хотим менять исходный текст, просто добавим ссылку
+                if fwd_from:
+                    # Шаг 1: Получаем базовую информацию напрямую из fwd_from
+                    if fwd_from.from_name:
+                        original_source_title = fwd_from.from_name
+                    
+                    if fwd_from.from_id and isinstance(fwd_from.from_id, PeerChannel) and fwd_from.channel_post:
+                        channel_id = fwd_from.from_id.channel_id
+                        message_id = fwd_from.channel_post
+                        # Шаг 2: Создаем "универсальную" ссылку, которая почти всегда доступна
+                        original_message_link = f"https://t.me/c/{channel_id}/{message_id}"
+
+                        # Шаг 3: Пытаемся "улучшить" ссылку, получив публичный username
+                        try:
+                            original_entity = await self.client.get_entity(fwd_from.from_id)
+                            if getattr(original_entity, 'username', None):
+                                original_message_link = f"https://t.me/{original_entity.username}/{message_id}"
+                            if getattr(original_entity, 'title', None): # Обновляем название, если оно более точное
+                                original_source_title = original_entity.title
+                        except Exception:
+                            # Если не удалось получить entity - не страшно, у нас уже есть базовая ссылка и название
+                            logging.info(f"Не удалось получить entity для канала {channel_id}. Используется базовая ссылка.")
+
+                # Добавляем информацию в очередь
                 if original_message_link:
                     message_to_queue['link'] = original_message_link
                 else:
+                    # Этот блок теперь сработает только в редких случаях (например, пересылка от пользователя)
                     message_to_queue['link'] = f"Исходный канал/пользователь: {original_source_title}"
                     
                 self.message_queue.append(message_to_queue)
                 logging.info(f"Добавлено пересланное сообщение в очередь из '{source_channel_title}' (оригинал: '{original_source_title}').")
                 
         except Exception as e:
-            logging.error(f"Ошибка в обработчике нового сообщения: {e}", exc_info=True) # Добавляем exc_info для полного traceback
+            logging.error(f"Ошибка в обработчике нового сообщения: {e}", exc_info=True)
+
+
+
 
     async def _command_handler(self, event: events.NewMessage.Event):
         """Обработчик команд от авторизованного пользователя."""
