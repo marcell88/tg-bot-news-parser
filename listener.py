@@ -16,9 +16,12 @@ class Config:
     """Класс для хранения конфигурации приложения."""
     API_ID = 25491744
     API_HASH = '0643451ea49fcac6f5a8697005714e33'
-    TARGET_CHAT_ID = '@queue_prosa_bot'  # ID целевой группы
-    PRIVATE_GROUP_ID = -1002651816355    # ID приватной группы для мониторинга (ДОБАВЛЕНО)
-    BOT_USERNAME = '@NewsFeedProcessing_bot'  # Имя бота для пересылки (ДОБАВЛЕНО)
+
+    TARGET_CHAT_ID = '@queue_2_bot'  # ID целевой группы, сообщения из тг-каналов пересылаются сюда
+
+    PRIVATE_GROUP_ID = -1003081584455    # ID приватной группы для мониторинга (ДОБАВЛЕНО) - если появляется сообщение в приватное. то оно пересылается в trigger
+    BOT_USERNAME = '@trigger_3_bot'  # Имя бота для пересылки (ДОБАВЛЕНО)
+
     MESSAGE_SEND_INTERVAL_SECONDS = 10 # Интервал отправки сообщений в секундах
     CHANNELS_FILE = 'monitored_channels.json' # Файл для сохранения списка каналов
     AUTHORIZED_USER_ID = None # ID пользователя, который может управлять ботом (будет установлен после авторизации)
