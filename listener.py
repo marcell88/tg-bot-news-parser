@@ -17,10 +17,10 @@ class Config:
     API_ID = 25491744
     API_HASH = '0643451ea49fcac6f5a8697005714e33'
 
-    TARGET_CHAT_ID = '@queue_2_bot'  # ID целевой группы, сообщения из тг-каналов пересылаются сюда
+    TARGET_CHAT_ID = '@queue_news_bot'  # ID целевой группы, сообщения из тг-каналов пересылаются сюда
 
     PRIVATE_GROUP_ID = -1003081584455    # ID приватной группы для мониторинга (ДОБАВЛЕНО) - если появляется сообщение в приватное. то оно пересылается в trigger
-    BOT_USERNAME = '@trigger_3_bot'  # Имя бота для пересылки (ДОБАВЛЕНО)
+    BOT_USERNAME = '@trigger_prosa_bot'  # Имя бота для пересылки (ДОБАВЛЕНО)
 
     MESSAGE_SEND_INTERVAL_SECONDS = 10 # Интервал отправки сообщений в секундах
     CHANNELS_FILE = 'monitored_channels.json' # Файл для сохранения списка каналов
@@ -300,6 +300,7 @@ class TelegramForwarder:
                 
         except Exception as e:
             logging.error(f"Ошибка в обработчике нового сообщения: {e}", exc_info=True)
+
 
 
 
