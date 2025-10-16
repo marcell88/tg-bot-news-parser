@@ -4,7 +4,7 @@ import os
 import asyncpg
 import json
 from datetime import datetime, timedelta
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from database import Database
 
@@ -35,6 +35,7 @@ class StatsService:
     def __init__(self):
         self.db_pool = None
         self.bot_app = None
+        self.is_running = False
         logging.info("StatsService: Служба статистики инициализирована.")
 
     async def _setup_database(self):
@@ -157,18 +158,15 @@ class StatsService:
 📊 *Статистика системы мониторинга*
 
 *Обработано сообщений:*
-• Всего: `{total_count}`
+• Всего: `{last_id or 0}`
 • За неделю: `{week_count}`
 • За 24 часа: `{day_count}`
-• Последний ID: `{last_id or 0}`
 
 *Эффективность фильтров:*
 ✅ Фильтр 1 (допустимый контент): `{filter1_percent:.1f}%` ({filter1_count}/{total_count})
 ✅ Фильтр 2 (есть контекст): `{filter2_percent:.1f}%` ({filter2_count}/{total_count})
 ✅ Фильтр 3 (качественное содержание): `{filter3_percent:.1f}%` ({filter3_count}/{total_count})
 
-*Прохождение контента:*
-🟢 Прошли все фильтры: `{filter3_count} сообщений`
             """.strip()
 
             await update.message.reply_text(stats_message, parse_mode='Markdown')
@@ -178,16 +176,41 @@ class StatsService:
             await update.message.reply_text("❌ Ошибка при получении статистики.")
 
     async def run_bot(self):
-        """Запускает бота."""
+        """Запускает бота в отдельном потоке."""
         if not self.bot_app:
             logging.error("StatsService: Бот не настроен, запуск невозможен.")
             return
 
         try:
             logging.info("StatsService: Запуск бота статистики...")
-            await self.bot_app.run_polling()
+            self.is_running = True
+            
+            # Запускаем бота с обработкой остановки
+            await self.bot_app.initialize()
+            await self.bot_app.start()
+            await self.bot_app.updater.start_polling()
+            
+            # Держим бота активным
+            while self.is_running:
+                await asyncio.sleep(1)
+                
+        except asyncio.CancelledError:
+            logging.info("StatsService: Получен сигнал остановки бота")
         except Exception as e:
             logging.error(f"StatsService: Ошибка при работе бота: {e}")
+        finally:
+            # Корректно останавливаем бота
+            if hasattr(self.bot_app, 'updater') and self.bot_app.updater:
+                await self.bot_app.updater.stop()
+            if self.bot_app:
+                await self.bot_app.stop()
+                await self.bot_app.shutdown()
+            logging.info("StatsService: Бот остановлен")
+
+    async def stop(self):
+        """Останавливает службу."""
+        self.is_running = False
+        logging.info("StatsService: Остановка службы...")
 
     async def run(self):
         """Основной метод запуска службы."""
@@ -203,10 +226,15 @@ class StatsService:
 async def main():
     """Точка входа для службы статистики."""
     stats_service = StatsService()
-    await stats_service.run()
+    
+    try:
+        await stats_service.run()
+    except KeyboardInterrupt:
+        logging.info("StatsService: Получен KeyboardInterrupt")
+    except Exception as e:
+        logging.error(f"StatsService: Непредвиденная ошибка: {e}")
+    finally:
+        await stats_service.stop()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logging.info("StatsService: Остановка по запросу пользователя.")
+    asyncio.run(main())
