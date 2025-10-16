@@ -37,6 +37,9 @@ class Config:
 
     # CHANNELS_FILE - имя файла, в котором хранится список мониторящихся каналов.
     CHANNELS_FILE = 'monitored_channels.json'
+
+    # CHANNELS_UPDATE_INTERVAL_MINUTES - интервал обновления списка каналов (в минутах)
+    CHANNELS_UPDATE_INTERVAL_MINUTES = 30  # <-- ДОБАВИТЬ
     
     # --- НАСТРОЙКИ БАЗЫ ДАННЫХ (Внешнее подключение Amvera с SSL) ---
     # DB_HOST - адрес хоста базы данных (публичный домен Amvera). Используется os.getenv для 
@@ -62,17 +65,80 @@ class TelegramListener:
     3. Сохранение сообщений в PostgreSQL.
     """
     def __init__(self, client: TelegramClient):
-            # client - экземпляр TelegramClient для взаимодействия с Telegram.
             self.client = client
-            
-            # Сущности Telegram (получаются асинхронно после старта):
-            self.bot_entity = None  # Объект бота-анализатора.
-            self.private_group_entity = None # Объект приватной группы.
-
-            # monitored_channel_identifiers - множество идентификаторов (юзернеймов, ID) отслеживаемых каналов.
+            self.bot_entity = None 
+            self.private_group_entity = None
             self.monitored_channel_identifiers = self._load_monitored_channels() 
-            # db_pool - пул подключений к базе данных asyncpg (для эффективной работы с БД).
             self.db_pool = None 
+            self.last_channels_update = None
+
+
+    async def _update_monitored_channels(self):
+        """
+        Обновляет список мониторящихся каналов, получая текущие подписки пользователя.
+        """
+        try:
+            logging.info("🔄 Обновление списка мониторящихся каналов...")
+            
+            channels_list = []
+            
+            # Получаем все диалоги
+            async for dialog in self.client.iter_dialogs():
+                # Берем только каналы (is_channel = True)
+                if dialog.is_channel:
+                    entity = dialog.entity
+                    
+                    channel_data = {
+                        'id': entity.id,
+                        'title': getattr(entity, 'title', 'Без названия'),
+                        'username': getattr(entity, 'username', None),
+                        'participants_count': getattr(entity, 'participants_count', 0),
+                        'broadcast': getattr(entity, 'broadcast', False),
+                        'megagroup': getattr(entity, 'megagroup', False),
+                    }
+                    
+                    channels_list.append(channel_data)
+            
+            # Сохраняем в monitored_channels.json
+            with open(Config.CHANNELS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(channels_list, f, ensure_ascii=False, indent=2)
+            
+            # ОБНОВЛЯЕМ ПРАВИЛЬНО - без рекурсии
+            channel_ids = set()
+            for channel in channels_list:
+                channel_ids.add(str(channel['id']))
+            
+            old_count = len(self.monitored_channel_identifiers)
+            self.monitored_channel_identifiers = channel_ids
+            self.last_channels_update = datetime.now()
+            
+            # Логируем изменения
+            logging.info(f"✅ Список каналов обновлен! Было: {old_count}, стало: {len(channel_ids)} каналов")
+            
+        except Exception as e:
+            logging.error(f"❌ Ошибка при обновлении списка каналов: {e}")
+
+
+
+    async def _channels_update_loop(self):
+        """
+        Цикл для регулярного обновления списка каналов.
+        """
+        while True:
+            try:
+                # Первое обновление при старте
+                if self.last_channels_update is None:
+                    await self._update_monitored_channels()
+                
+                # Ждем указанный интервал
+                await asyncio.sleep(Config.CHANNELS_UPDATE_INTERVAL_MINUTES * 60)
+                
+                # Обновляем список каналов
+                await self._update_monitored_channels()
+                
+            except Exception as e:
+                logging.error(f"Ошибка в цикле обновления каналов: {e}")
+                await asyncio.sleep(60)  # Ждем минуту при ошибке
 
     # --- МЕТОДЫ ДЛЯ РАБОТЫ С БАЗОЙ ДАННЫХ ---
     async def _setup_database(self):
@@ -156,18 +222,40 @@ class TelegramListener:
     def _load_monitored_channels(self) -> set[str]:
         """
         Загружает список каналов для мониторинга из файла 'monitored_channels.json'.
-        Возвращает set (множество) для быстрого поиска.
         """
         if os.path.exists(Config.CHANNELS_FILE):
             try:
                 with open(Config.CHANNELS_FILE, 'r', encoding='utf-8') as f:
-                    channels = json.load(f)
-                logging.info(f"Загружено {len(channels)} каналов из {Config.CHANNELS_FILE}")
-                return set(str(c).lower().replace('@', '') for c in channels)
+                    channels_data = json.load(f)
+                
+                # Извлекаем ID каналов
+                channel_ids = set()
+                channel_info_list = []
+                
+                for channel in channels_data:
+                    channel_id = str(channel['id'])
+                    channel_ids.add(channel_id)
+                    channel_info = {
+                        'id': channel_id,
+                        'title': channel.get('title', 'Без названия'),
+                        'username': channel.get('username', 'нет username')
+                    }
+                    channel_info_list.append(channel_info)
+                
+                # Логируем информацию
+                logging.info(f"📊 Загружено {len(channel_ids)} каналов для мониторинга")
+                logging.info("📋 Список мониторящихся каналов:")
+                for i, channel in enumerate(channel_info_list, 1):
+                    username_display = f"@{channel['username']}" if channel['username'] != 'нет username' else "без username"
+                    logging.info(f"    {i:2d}. {channel['title']:40} (ID: {channel['id']:15}) {username_display}")
+                
+                return channel_ids
+                
             except Exception as e:
                 logging.error(f"Ошибка при загрузке каналов: {e}") 
                 return set()
-        logging.info("Файл с каналами не найден, начинается с пустого списка.")
+        
+        logging.info(f"Файл {Config.CHANNELS_FILE} не найден. Будет создан при первом обновлении.")
         return set()
 
     async def _private_group_message_handler(self, event: events.NewMessage.Event):
@@ -268,6 +356,7 @@ class TelegramListener:
         1. Разрешает все сущности (чаты/боты).
         2. Настраивает БД.
         3. Добавляет обработчики событий Telegram.
+        4. Запускает фоновые задачи.
         """
         await self._resolve_entities() 
         await self._setup_database() 
@@ -277,7 +366,12 @@ class TelegramListener:
             chats=[Config.PRIVATE_GROUP_ID]
         ))
         
+        # Запускаем фоновую задачу обновления каналов
+        asyncio.create_task(self._channels_update_loop())
+        
         logging.info("Мониторинг каналов и подключение к БД запущены...")
+        logging.info(f"📡 Автообновление списка каналов каждые {Config.CHANNELS_UPDATE_INTERVAL_MINUTES} минут")
+
 
 # --- Функции для работы с сессией ---
 async def create_and_save_session(session_name: str) -> str:
