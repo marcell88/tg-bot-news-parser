@@ -274,8 +274,6 @@ class StatsService:
 За последние 24 часа:
 🕐 Все фильтры: {day_filter3_percent:.1f}% ({day_filter3_count}/{day_count})
 
-Дополнительные команды:
-/distr 5.0 - статистика распределения по essence_score
             """.strip()
 
             await update.message.reply_text(stats_message)
