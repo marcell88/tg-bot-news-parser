@@ -278,5 +278,5 @@ ESSENCE_FILTRATION_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False
 }
 
-ESSENCE_THRESHOLD=7
+ESSENCE_THRESHOLD=7.5
 ESSENCE_MAX=8
