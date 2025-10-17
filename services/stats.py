@@ -3,9 +3,10 @@ import logging
 import os
 import asyncpg
 import json
+import re
 from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from database import Database
 
 # Настройка логирования
@@ -61,9 +62,7 @@ class StatsService:
             self.bot_app.add_handler(CommandHandler("start", self._start_command))
             self.bot_app.add_handler(CommandHandler("stats", self._stats_command))
             self.bot_app.add_handler(CommandHandler("channels", self._channels_command))
-            
-            # Обработчик для команды stats-X с параметром
-            self.bot_app.add_handler(CommandHandler("stats", self._stats_score_command, pattern=r"stats-(\d+(?:\.\d+)?)"))
+            self.bot_app.add_handler(CommandHandler("distr", self._distr_command))
             
             logging.info("StatsService: Бот настроен успешно.")
             return True
@@ -74,17 +73,17 @@ class StatsService:
     async def _start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /start."""
         welcome_text = """
-🤖 *Бот статистики системы мониторинга*
+🤖 Бот статистики системы мониторинга
 
 Доступные команды:
 
 /stats - Показать общую статистику обработки
-/stats-X - Статистика по essence_score (например /stats-5 или /stats-6.1)
+/distr - Статистика распределения по essence_score (например /distr 5.0)
 /channels - Список мониторящихся каналов
 
 Система автоматически собирает новости и анализирует их с помощью AI.
         """
-        await update.message.reply_text(welcome_text, parse_mode='Markdown')
+        await update.message.reply_text(welcome_text)
 
     async def _channels_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /channels."""
@@ -101,15 +100,15 @@ class StatsService:
                 return
 
             # Формируем сообщение с каналами
-            message = "📋 *Мониторящиеся каналы:*\n\n"
+            message = "📋 Мониторящиеся каналы:\n\n"
             for i, channel in enumerate(channels_data[:50], 1):  # Ограничиваем 50 каналами
                 username = f"@{channel['username']}" if channel['username'] else "без username"
-                message += f"{i}. {channel['title']}\n   ID: `{channel['id']}` • {username}\n\n"
+                message += f"{i}. {channel['title']}\n   ID: {channel['id']} • {username}\n\n"
 
             if len(channels_data) > 50:
                 message += f"\n... и еще {len(channels_data) - 50} каналов"
 
-            await update.message.reply_text(message, parse_mode='Markdown')
+            await update.message.reply_text(message)
 
         except Exception as e:
             logging.error(f"Ошибка при обработке /channels: {e}")
@@ -136,28 +135,31 @@ class StatsService:
             logging.error(f"Ошибка при получении размера БД: {e}")
             return "неизвестно"
 
-    async def _stats_score_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработчик команды /stats-X для статистики по essence_score."""
+    async def _distr_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /distr для статистики по essence_score."""
         try:
             if not self.db_pool:
                 await update.message.reply_text("❌ База данных не подключена.")
                 return
 
-            # Получаем число из команды
-            command_text = update.message.text
-            score_match = context.matches[0] if context.matches else None
-            
-            if not score_match:
-                await update.message.reply_text("❌ Неверный формат команды. Используйте: /stats-5 или /stats-6.1")
+            # Проверяем, передан ли параметр
+            if not context.args:
+                await update.message.reply_text(
+                    "❌ Укажите пороговое значение для essence_score\n"
+                    "Например: /distr 5.0 или /distr 7.5"
+                )
                 return
 
+            # Получаем число из аргументов команды
+            score_text = context.args[0]
+            
             try:
-                min_score = float(score_match)
+                min_score = float(score_text)
                 if min_score < 0 or min_score > 10:
                     await update.message.reply_text("❌ Число должно быть от 0 до 10")
                     return
             except ValueError:
-                await update.message.reply_text("❌ Неверный формат числа. Используйте: /stats-5 или /stats-6.1")
+                await update.message.reply_text("❌ Неверный формат числа. Используйте: /distr 5.0 или /distr 6.1")
                 return
 
             async with self.db_pool.acquire() as conn:
@@ -175,19 +177,19 @@ class StatsService:
 
             # Формируем сообщение
             score_message = f"""
-🎯 *Статистика по essence_score*
+🎯 Статистика распределения по essence_score
 
-Запрос: сообщения с оценкой >= `{min_score}`
+Запрос: сообщения с оценкой >= {min_score}
 
-*Результат:*
-• Больше {min_score} баллов: `{score_percent:.1f}%` ({score_count}/{total_count})
-• Всего сообщений в базе: `{total_count}`
+Результат:
+• Больше {min_score} баллов: {score_percent:.1f}% ({score_count}/{total_count})
+• Всего сообщений в базе: {total_count}
             """.strip()
 
-            await update.message.reply_text(score_message, parse_mode='Markdown')
+            await update.message.reply_text(score_message)
 
         except Exception as e:
-            logging.error(f"Ошибка при обработке /stats-{min_score}: {e}")
+            logging.error(f"Ошибка при обработке /distr {score_text}: {e}")
             await update.message.reply_text("❌ Ошибка при получении статистики по оценкам.")
 
     async def _stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -254,29 +256,29 @@ class StatsService:
             # Получаем размер БД
             db_size = await self._get_database_size()
 
-            # Формируем сообщение со статистикой
+            # Формируем сообщение со статистикой (без Markdown)
             stats_message = f"""
-📊 *Статистика системы мониторинга*
+📊 Статистика системы мониторинга
 
-*Обработано сообщений:*
-• Всего: `{last_id or 0}`
-• За неделю: `{week_count}`
-• За 24 часа: `{day_count}`
-• Размер БД: `{db_size}`
+Обработано сообщений:
+• Всего: {last_id or 0}
+• За неделю: {week_count}
+• За 24 часа: {day_count}
+• Размер БД: {db_size}
 
-*Эффективность фильтров (все время):*
-✅ Фильтр 1 (допустимый контент): `{filter1_percent:.1f}%` ({filter1_count}/{total_count})
-✅ Фильтр 2 (есть контекст): `{filter2_percent:.1f}%` ({filter2_count}/{total_count})
-✅ Фильтр 3 (качественное содержание): `{filter3_percent:.1f}%` ({filter3_count}/{total_count})
+Эффективность фильтров (все время):
+✅ Фильтр 1 (допустимый контент): {filter1_percent:.1f}% ({filter1_count}/{total_count})
+✅ Фильтр 2 (есть контекст): {filter2_percent:.1f}% ({filter2_count}/{total_count})
+✅ Фильтр 3 (качественное содержание): {filter3_percent:.1f}% ({filter3_count}/{total_count})
 
-*За последние 24 часа:*
-🕐 Все фильтры: `{day_filter3_percent:.1f}%` ({day_filter3_count}/{day_count})
+За последние 24 часа:
+🕐 Все фильтры: {day_filter3_percent:.1f}% ({day_filter3_count}/{day_count})
 
-*Дополнительные команды:*
-/stats-X - статистика по essence_score (например /stats-5)
+Дополнительные команды:
+/distr 5.0 - статистика распределения по essence_score
             """.strip()
 
-            await update.message.reply_text(stats_message, parse_mode='Markdown')
+            await update.message.reply_text(stats_message)
 
         except Exception as e:
             logging.error(f"Ошибка при обработке /stats: {e}")
