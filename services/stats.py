@@ -62,6 +62,9 @@ class StatsService:
             self.bot_app.add_handler(CommandHandler("stats", self._stats_command))
             self.bot_app.add_handler(CommandHandler("channels", self._channels_command))
             
+            # Обработчик для команды stats-X с параметром
+            self.bot_app.add_handler(CommandHandler("stats", self._stats_score_command, pattern=r"stats-(\d+(?:\.\d+)?)"))
+            
             logging.info("StatsService: Бот настроен успешно.")
             return True
         except Exception as e:
@@ -75,7 +78,8 @@ class StatsService:
 
 Доступные команды:
 
-/stats - Показать статистику обработки
+/stats - Показать общую статистику обработки
+/stats-X - Статистика по essence_score (например /stats-5 или /stats-6.1)
 /channels - Список мониторящихся каналов
 
 Система автоматически собирает новости и анализирует их с помощью AI.
@@ -131,6 +135,60 @@ class StatsService:
         except Exception as e:
             logging.error(f"Ошибка при получении размера БД: {e}")
             return "неизвестно"
+
+    async def _stats_score_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /stats-X для статистики по essence_score."""
+        try:
+            if not self.db_pool:
+                await update.message.reply_text("❌ База данных не подключена.")
+                return
+
+            # Получаем число из команды
+            command_text = update.message.text
+            score_match = context.matches[0] if context.matches else None
+            
+            if not score_match:
+                await update.message.reply_text("❌ Неверный формат команды. Используйте: /stats-5 или /stats-6.1")
+                return
+
+            try:
+                min_score = float(score_match)
+                if min_score < 0 or min_score > 10:
+                    await update.message.reply_text("❌ Число должно быть от 0 до 10")
+                    return
+            except ValueError:
+                await update.message.reply_text("❌ Неверный формат числа. Используйте: /stats-5 или /stats-6.1")
+                return
+
+            async with self.db_pool.acquire() as conn:
+                # Общее количество записей
+                total_count = await conn.fetchval("SELECT COUNT(*) FROM telegram_posts")
+                
+                # Количество записей с essence_score >= указанного значения
+                score_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM telegram_posts WHERE essence_score >= $1", 
+                    min_score
+                )
+                
+                # Рассчитываем процент
+                score_percent = (score_count / total_count * 100) if total_count > 0 else 0
+
+            # Формируем сообщение
+            score_message = f"""
+🎯 *Статистика по essence_score*
+
+Запрос: сообщения с оценкой >= `{min_score}`
+
+*Результат:*
+• Больше {min_score} баллов: `{score_percent:.1f}%` ({score_count}/{total_count})
+• Всего сообщений в базе: `{total_count}`
+            """.strip()
+
+            await update.message.reply_text(score_message, parse_mode='Markdown')
+
+        except Exception as e:
+            logging.error(f"Ошибка при обработке /stats-{min_score}: {e}")
+            await update.message.reply_text("❌ Ошибка при получении статистики по оценкам.")
 
     async def _stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /stats."""
@@ -213,6 +271,9 @@ class StatsService:
 
 *За последние 24 часа:*
 🕐 Все фильтры: `{day_filter3_percent:.1f}%` ({day_filter3_count}/{day_count})
+
+*Дополнительные команды:*
+/stats-X - статистика по essence_score (например /stats-5)
             """.strip()
 
             await update.message.reply_text(stats_message, parse_mode='Markdown')
