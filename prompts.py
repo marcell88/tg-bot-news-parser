@@ -144,14 +144,20 @@ CONTEXT_FILTRATION = """
 Инструкция:
 1. Тщательно проанализируй текст новости по каждому критерию
 2. Поставь оценку от 0 до 10 для каждого критерия
-3. Рассчитай среднее арифметическое всех оценок - это context_score
-4. В поле context_explain напиши краткий анализ (2-3 предложения), выделив сильные и слабые стороны подачи информации
+3. В поле context_explain напиши краткий анализ (2-3 предложения), выделив сильные и слабые стороны подачи информации
 
 Формат ответа:
 ```json
 {
-  "context_score": 7.5,
-  "context_explain": "Краткий анализ сильных и слабых сторон",
+  "subject_score": 8,
+  "object_score": 7,
+  "which_score": 6,
+  "action_score": 9,
+  "time_place_score": 5,
+  "how_score": 6,
+  "reason_score": 8,
+  "consequences_score": 7,
+  "context_explain": "Краткий анализ сильных и слабых сторон"
 }
 
 """
@@ -159,16 +165,54 @@ CONTEXT_FILTRATION = """
 CONTEXT_FILTRATION_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
-        "context_score": {
+        "subject_score": {
             "type": "number",
-            "description": "Средняя оценка качества контекста по всем критериям (от 0 до 10)"
+            "description": "Оценка четкости определения субъектов действия (0-10)"
+        },
+        "object_score": {
+            "type": "number",
+            "description": "Оценка ясности объекта или цели действия (0-10)"
+        },
+        "which_score": {
+            "type": "number",
+            "description": "Оценка детальности описания субъектов/объектов (0-10)"
+        },
+        "action_score": {
+            "type": "number",
+            "description": "Оценка четкости описания основного действия/события (0-10)"
+        },
+        "time_place_score": {
+            "type": "number",
+            "description": "Оценка конкретности указаний времени и места (0-10)"
+        },
+        "how_score": {
+            "type": "number",
+            "description": "Оценка объяснения метода/механизма действия (0-10)"
+        },
+        "reason_score": {
+            "type": "number",
+            "description": "Оценка представления мотивов/причин события (0-10)"
+        },
+        "consequences_score": {
+            "type": "number",
+            "description": "Оценка ясности описания последствий/результатов (0-10)"
         },
         "context_explain": {
-            "type": "string", 
+            "type": "string",
             "description": "Краткий анализ сильных и слабых сторон подачи информации (2-3 предложения)"
         }
     },
-    "required": ["context_score", "context_explain"],
+    "required": [
+        "subject_score",
+        "object_score",
+        "which_score",
+        "action_score",
+        "time_place_score",
+        "how_score",
+        "reason_score",
+        "consequences_score",
+        "context_explain"
+    ],
     "additionalProperties": False
 }
 
@@ -347,17 +391,23 @@ ESSENCE_FILTRATION = """
 
 ИНСТРУКЦИЯ:
 1. Оцени каждый критерий по шкале от 0 до 10
-2. Рассчитай среднее арифметическое всех пяти оценок (это essence_score)
-3. Найди самый большой балл из пяти оценок критериев (это essence_max)
-4. В пояснении укажи оценки всех критериев и дай общие краткие пояснения к анализу
+2. В пояснении укажи оценки всех критериев и дай общие краткие пояснения к анализу
 
 ФОРМАТ ОТВЕТА:
 Всегда отвечай в формате JSON:
 
 ```json
 {
-  "essence_score": 6.8,
-  "essence_max": 9,
+  "emotional_score": 8,
+  "visual_score": 5,
+  "heroes_score": 7,
+  "actual_score": 9,
+  "drama_score": 6,
+  "context_depth_score": 7,
+  "universal_score": 8,
+  "symbolic_score": 6,
+  "viral_score": 5,
+  "social_score": 7,
   "essence_explain": "Эмоциональность: 8/10 (вызывает сочувствие и возмущение), Визуальность: 5/10 (стандартное описание), Герои: 7/10 (обычные люди в сложной ситуации), Актуальность: 9/10 (затрагивает проблему ЖКХ), Драматичность: 6/10 (конфликт с управляющей компанией), Глубина контекста: 7/10 (показывает системные проблемы ЖКХ), Универсальность: 8/10 (тема жилья близка всем), Символическое значение: 6/10 (типичная ситуация для многих городов), Виральный потенциал: 5/10 (может вызвать обсуждение в локальных чатах), Социальная значимость: 7/10 (поднимает важную общественную проблему). Новость имеет хороший потенциал благодаря актуальности темы и универсальности проблемы."
 }
 
@@ -366,22 +416,66 @@ ESSENCE_FILTRATION = """
 ESSENCE_FILTRATION_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
-        "essence_score": {
+        "emotional_score": {
             "type": "number",
-            "description": "Средняя оценка качества контекста по всем критериям (от 0 до 10)"
+            "description": "Оценка эмоциональной яркости новости (0-10)"
         },
-        "essence_max": {
+        "visual_score": {
+            "type": "number", 
+            "description": "Оценка визуальной образности новости (0-10)"
+        },
+        "heroes_score": {
             "type": "number",
-            "description": "Максимальная оценка какого-то из критериев (от 0 до 10)"
+            "description": "Оценка интересности героев новости (0-10)"
+        },
+        "actual_score": {
+            "type": "number",
+            "description": "Оценка актуальности новости для жителя России (0-10)"
+        },
+        "drama_score": {
+            "type": "number",
+            "description": "Оценка драматичности новости (0-10)"
+        },
+        "context_depth_score": {
+            "type": "number",
+            "description": "Оценка глубины контекста новости (0-10)"
+        },
+        "universal_score": {
+            "type": "number",
+            "description": "Оценка универсальности темы новости (0-10)"
+        },
+        "symbolic_score": {
+            "type": "number",
+            "description": "Оценка символического значения новости (0-10)"
+        },
+        "viral_score": {
+            "type": "number",
+            "description": "Оценка вирального потенциала новости (0-10)"
+        },
+        "social_score": {
+            "type": "number",
+            "description": "Оценка социальной значимости новости (0-10)"
         },
         "essence_explain": {
             "type": "string", 
             "description": "Перечислить оценки по критериям и дать общее краткое пояснение (2-3 предложения)"
         }
     },
-    "required": ["context_score", "context_explain"],
+    "required": [
+        "emotional_score",
+        "visual_score", 
+        "heroes_score",
+        "actual_score",
+        "drama_score",
+        "context_depth_score",
+        "universal_score",
+        "symbolic_score",
+        "viral_score",
+        "social_score",
+        "essence_explain"
+    ],
     "additionalProperties": False
 }
 
 ESSENCE_THRESHOLD=7.0
-ESSENCE_MAX=8.0
+ESSENCE_MAX=9.0
