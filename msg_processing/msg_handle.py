@@ -69,7 +69,8 @@ async def process_message_by_form(post_id: int, text_content: str) -> Tuple[bool
                     text=text_content,
                     response_schema=CONTEXT_FILTRATION_SCHEMA,
                     model_type='deepseek-chat',
-                    temperature=0.3
+                    temperature=0.3,
+                    tokens=500
                 )
                 
                 if context_result_json:
@@ -111,7 +112,8 @@ async def process_message_by_essence(post_id: int, text_content: str) -> Tuple[f
             text=text_content,
             response_schema=ESSENCE_FILTRATION_SCHEMA,
             model_type='deepseek-chat',
-            temperature=0.6
+            temperature=0.6,
+            tokens=3000
         )
         # -----------------------------
 

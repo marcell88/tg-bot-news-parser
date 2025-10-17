@@ -33,6 +33,7 @@ async def call_deepseek_api(
     response_schema: Dict[str, Any],
     model_type: str,
     temperature: float = 0.7,
+    tokens: int = 500,
     # НОВЫЙ ПАРАМЕТР: Позволяет отключить проверку SSL-сертификата (полезно для прокси/корпоративных сетей)
     verify_ssl: bool = True,
 ) -> Optional[Dict[str, Any]]:
@@ -80,7 +81,7 @@ async def call_deepseek_api(
             }
         ],
         "temperature": temperature,
-        "max_tokens": 500
+        "max_tokens": tokens
     }
 
     # Создаем TCPConnector, чтобы явно указать, нужно ли проверять SSL
