@@ -111,6 +111,27 @@ class StatsService:
             logging.error(f"Ошибка при обработке /channels: {e}")
             await update.message.reply_text("❌ Ошибка при получении списка каналов.")
 
+    async def _get_database_size(self) -> str:
+        """Получает размер базы данных в читаемом формате."""
+        try:
+            async with self.db_pool.acquire() as conn:
+                # Запрос для получения размера БД
+                size_bytes = await conn.fetchval("SELECT pg_database_size($1)", Config.DB_NAME)
+                
+                # Конвертируем в читаемый формат
+                if size_bytes >= 1024**3:  # GB
+                    return f"{size_bytes / (1024**3):.2f} GB"
+                elif size_bytes >= 1024**2:  # MB
+                    return f"{size_bytes / (1024**2):.2f} MB"
+                elif size_bytes >= 1024:  # KB
+                    return f"{size_bytes / 1024:.2f} KB"
+                else:
+                    return f"{size_bytes} bytes"
+                    
+        except Exception as e:
+            logging.error(f"Ошибка при получении размера БД: {e}")
+            return "неизвестно"
+
     async def _stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /stats."""
         try:
@@ -137,7 +158,7 @@ class StatsService:
                     day_ago
                 )
                 
-                # Статистика фильтров
+                # Статистика фильтров (общая)
                 filter1_count = await conn.fetchval(
                     "SELECT COUNT(*) FROM telegram_posts WHERE filter_initial = true"
                 )
@@ -148,10 +169,32 @@ class StatsService:
                     "SELECT COUNT(*) FROM telegram_posts WHERE filter_initial = true AND context = true AND essence = true"
                 )
                 
-                # Рассчитываем проценты
+                # Статистика фильтров за 24 часа
+                day_filter1_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM telegram_posts WHERE filter_initial = true AND post_time >= $1", 
+                    day_ago
+                )
+                day_filter2_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM telegram_posts WHERE filter_initial = true AND context = true AND post_time >= $1", 
+                    day_ago
+                )
+                day_filter3_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM telegram_posts WHERE filter_initial = true AND context = true AND essence = true AND post_time >= $1", 
+                    day_ago
+                )
+                
+                # Рассчитываем проценты (общие)
                 filter1_percent = (filter1_count / total_count * 100) if total_count > 0 else 0
                 filter2_percent = (filter2_count / total_count * 100) if total_count > 0 else 0
                 filter3_percent = (filter3_count / total_count * 100) if total_count > 0 else 0
+                
+                # Рассчитываем проценты за 24 часа
+                day_filter1_percent = (day_filter1_count / day_count * 100) if day_count > 0 else 0
+                day_filter2_percent = (day_filter2_count / day_count * 100) if day_count > 0 else 0
+                day_filter3_percent = (day_filter3_count / day_count * 100) if day_count > 0 else 0
+
+            # Получаем размер БД
+            db_size = await self._get_database_size()
 
             # Формируем сообщение со статистикой
             stats_message = f"""
@@ -161,12 +204,15 @@ class StatsService:
 • Всего: `{last_id or 0}`
 • За неделю: `{week_count}`
 • За 24 часа: `{day_count}`
+• Размер БД: `{db_size}`
 
-*Эффективность фильтров:*
+*Эффективность фильтров (все время):*
 ✅ Фильтр 1 (допустимый контент): `{filter1_percent:.1f}%` ({filter1_count}/{total_count})
 ✅ Фильтр 2 (есть контекст): `{filter2_percent:.1f}%` ({filter2_count}/{total_count})
 ✅ Фильтр 3 (качественное содержание): `{filter3_percent:.1f}%` ({filter3_count}/{total_count})
 
+*За последние 24 часа:*
+🕐 Все фильтры: `{day_filter3_percent:.1f}%` ({day_filter3_count}/{day_count})
             """.strip()
 
             await update.message.reply_text(stats_message, parse_mode='Markdown')
