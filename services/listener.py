@@ -14,7 +14,8 @@ import json
 import os 
 # asyncpg - асинхронный драйвер PostgreSQL.
 import asyncpg 
-from database import Database
+from database.database import Database
+from database.database_config import DatabaseConfig
 
 # --- Настройка логирования ---
 # Настраиваем логирование, чтобы видеть сообщения (INFO, ERROR и т.д.) с датой и временем.
@@ -41,11 +42,11 @@ class Config:
     # CHANNELS_UPDATE_INTERVAL_MINUTES - интервал обновления списка каналов (в минутах)
     CHANNELS_UPDATE_INTERVAL_MINUTES = 30  # <-- ДОБАВИТЬ
 
-    DB_HOST = os.getenv('DB_HOST', 'tg-parsed-db-2-marcell88.db-msk0.amvera.tech')
-    DB_PORT = int(os.getenv('DB_PORT', 5432))
-    DB_NAME = os.getenv('DB_NAME', 'tg-parsed-db-2')
-    DB_USER = os.getenv('DB_USER', 'marcell')
-    DB_PASS = os.getenv('DB_PASS', '12345')
+    DB_HOST = DatabaseConfig.DB_HOST
+    DB_PORT = DatabaseConfig.DB_PORT
+    DB_NAME = DatabaseConfig.DB_NAME
+    DB_USER = DatabaseConfig.DB_USER
+    DB_PASS = DatabaseConfig.DB_PASS
     
     # -----------------------------------------------------------------
 
@@ -153,7 +154,16 @@ class TelegramListener:
                         post_time TIMESTAMP WITH TIME ZONE NOT NULL, 
                         text_content TEXT NOT NULL,
                         message_link TEXT,
-                        finished BOOLEAN DEFAULT FALSE
+                        finished BOOLEAN DEFAULT FALSE,
+                        analyzed BOOLEAN DEFAULT FALSE,
+                        filter_initial BOOLEAN,
+                        filter_initial_explain TEXT,
+                        context BOOLEAN,
+                        context_score REAL,
+                        context_explain TEXT,
+                        essence BOOLEAN,
+                        essence_score REAL,
+                        essence_explain TEXT                    
                     );
                 """)
                 logging.info("Таблица 'telegram_posts' создана/готова.")

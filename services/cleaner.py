@@ -4,7 +4,8 @@ import os
 import asyncpg 
 from datetime import datetime, timedelta
 # Импортируем общий менеджер БД
-from database import Database  # <-- ДОБАВИТЬ ЭТОТ ИМПОРТ
+from database.database import Database
+from database.database_config import DatabaseConfig
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,11 +16,11 @@ class Config:
     Класс для хранения конфигурации приложения (DB и параметры очистки).
     """
     # --- НАСТРОЙКИ БАЗЫ ДАННЫХ (Копируются из listener.py для автономности) ---
-    DB_HOST = os.getenv('DB_HOST', 'tg-parsed-db-2-marcell88.db-msk0.amvera.tech')
-    DB_PORT = int(os.getenv('DB_PORT', 5432))
-    DB_NAME = os.getenv('DB_NAME', 'tg-parsed-db-2')
-    DB_USER = os.getenv('DB_USER', 'marcell')
-    DB_PASS = os.getenv('DB_PASS', '12345')
+    DB_HOST = DatabaseConfig.DB_HOST
+    DB_PORT = DatabaseConfig.DB_PORT
+    DB_NAME = DatabaseConfig.DB_NAME
+    DB_USER = DatabaseConfig.DB_USER
+    DB_PASS = DatabaseConfig.DB_PASS
     
     # --- НАСТРОЙКИ ОЧИСТКИ ---
     # CLEANUP_INTERVAL_HOURS: Интервал между запусками задачи очистки (в часах)

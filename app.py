@@ -1,3 +1,4 @@
+# app.py
 import asyncio
 import logging
 import signal
@@ -6,7 +7,7 @@ from services.cleaner import main as run_cleaner
 from services.analyzer import main as run_analyzer
 from services.finisher import main as run_finisher
 from services.stats import main as run_stats
-from database import Database
+from database.database import Database  # <-- Обновленный импорт
 
 # Настраиваем логирование для точки входа.
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,6 +27,17 @@ class ServiceManager:
         """Обработчик сигналов остановки."""
         logging.info(f"Получен сигнал остановки {signum}")
         self.is_running = False
+
+    async def initialize_services(self):
+        """Инициализация всех служб перед запуском."""
+        try:
+            logging.info("🔄 Инициализация базы данных...")
+            await Database.initialize_database()
+            logging.info("✅ База данных инициализирована")
+            return True
+        except Exception as e:
+            logging.critical(f"❌ Ошибка инициализации БД: {e}")
+            return False
 
     async def start_services(self):
         """Запускает все службы."""
@@ -69,6 +81,11 @@ class ServiceManager:
     async def run(self):
         """Основной цикл работы."""
         try:
+            # Инициализация перед запуском служб
+            if not await self.initialize_services():
+                logging.critical("❌ Не удалось инициализировать БД. Завершение работы.")
+                return
+                
             await self.start_services()
             
             # Держим приложение активным

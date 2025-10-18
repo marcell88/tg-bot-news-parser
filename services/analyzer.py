@@ -2,7 +2,8 @@ import asyncio
 import logging
 import os
 import asyncpg
-from database import Database
+from database.database import Database
+from database.database_config import DatabaseConfig
 # Импортируем функцию-обработчик из нового модуля
 # Внимание: для работы этого файла требуется файл msg_processing/msg_handler.py
 from msg_processing.msg_handle import process_message_by_form, process_message_by_essence
@@ -18,11 +19,11 @@ class Config:
     Класс для хранения конфигурации приложения (DB и параметры анализа).
     """
     # --- НАСТРОЙКИ БАЗЫ ДАННЫХ (Копируются из listener.py) ---
-    DB_HOST = os.getenv('DB_HOST', 'tg-parsed-db-2-marcell88.db-msk0.amvera.tech')
-    DB_PORT = int(os.getenv('DB_PORT', 5432))
-    DB_NAME = os.getenv('DB_NAME', 'tg-parsed-db-2')
-    DB_USER = os.getenv('DB_USER', 'marcell')
-    DB_PASS = os.getenv('DB_PASS', '12345')
+    DB_HOST = DatabaseConfig.DB_HOST
+    DB_PORT = DatabaseConfig.DB_PORT
+    DB_NAME = DatabaseConfig.DB_NAME
+    DB_USER = DatabaseConfig.DB_USER
+    DB_PASS = DatabaseConfig.DB_PASS
     
     # --- НАСТРОЙКИ АНАЛИЗА ---
     # ANALYZER_INTERVAL_SECONDS: Интервал между запусками цикла проверки необработанных постов.
