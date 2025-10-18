@@ -40,19 +40,13 @@ class Config:
 
     # CHANNELS_UPDATE_INTERVAL_MINUTES - интервал обновления списка каналов (в минутах)
     CHANNELS_UPDATE_INTERVAL_MINUTES = 30  # <-- ДОБАВИТЬ
+
+    DB_HOST = os.getenv('DB_HOST', 'tg-parsed-db-2-marcell88.db-msk0.amvera.tech')
+    DB_PORT = int(os.getenv('DB_PORT', 5432))
+    DB_NAME = os.getenv('DB_NAME', 'tg-parsed-db-2')
+    DB_USER = os.getenv('DB_USER', 'marcell')
+    DB_PASS = os.getenv('DB_PASS', '12345')
     
-    # --- НАСТРОЙКИ БАЗЫ ДАННЫХ (Внешнее подключение Amvera с SSL) ---
-    # DB_HOST - адрес хоста базы данных (публичный домен Amvera). Используется os.getenv для 
-    # возможности установки значения через переменные окружения Amvera.
-    DB_HOST = os.getenv('DB_HOST', 'telegram-parsed-db-marcell88.db-msk0.amvera.tech') 
-    # DB_PORT - порт PostgreSQL (стандартный 5432).
-    DB_PORT = int(os.getenv('DB_PORT', 5432)) 
-    # DB_NAME - имя базы данных.
-    DB_NAME = os.getenv('DB_NAME', 'tg-parsed-db') 
-    # DB_USER - пользователь базы данных.
-    DB_USER = os.getenv('DB_USER', 'marcell') 
-    # DB_PASS - пароль к базе данных.
-    DB_PASS = os.getenv('DB_PASS', '12345') 
     # -----------------------------------------------------------------
 
 
