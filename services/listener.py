@@ -39,6 +39,11 @@ class Config:
     # CHANNELS_FILE - имя файла, в котором хранится список мониторящихся каналов.
     CHANNELS_FILE = 'monitored_channels.json'
 
+    # EXCLUDED_CHANNELS - каналы которые нужно исключить из мониторинга
+    EXCLUDED_CHANNELS = {
+        '2690606565',  # ID канала "Жизнь и проза"
+    }
+
     # CHANNELS_UPDATE_INTERVAL_MINUTES - интервал обновления списка каналов (в минутах)
     CHANNELS_UPDATE_INTERVAL_MINUTES = 30  # <-- ДОБАВИТЬ
 
@@ -71,17 +76,32 @@ class TelegramListener:
     async def _update_monitored_channels(self):
         """
         Обновляет список мониторящихся каналов, получая текущие подписки пользователя.
+        Исключает каналы из EXCLUDED_CHANNELS (только по ID).
         """
         try:
             logging.info("🔄 Обновление списка мониторящихся каналов...")
             
             channels_list = []
+            excluded_channels_found = []
             
             # Получаем все диалоги
             async for dialog in self.client.iter_dialogs():
                 # Берем только каналы (is_channel = True)
                 if dialog.is_channel:
                     entity = dialog.entity
+                    
+                    # Проверяем, не входит ли канал в исключения (только по ID)
+                    channel_id = str(entity.id)
+                    
+                    is_excluded = channel_id in Config.EXCLUDED_CHANNELS
+                    
+                    if is_excluded:
+                        excluded_channels_found.append({
+                            'id': channel_id,
+                            'title': getattr(entity, 'title', 'Без названия'),
+                            'username': getattr(entity, 'username', 'без username')
+                        })
+                        continue  # Пропускаем исключенные каналы
                     
                     channel_data = {
                         'id': entity.id,
@@ -109,6 +129,13 @@ class TelegramListener:
             
             # Логируем изменения
             logging.info(f"✅ Список каналов обновлен! Было: {old_count}, стало: {len(channel_ids)} каналов")
+            
+            # Логируем исключенные каналы
+            if excluded_channels_found:
+                logging.info("🚫 Исключенные каналы (не добавляются в мониторинг):")
+                for channel in excluded_channels_found:
+                    username_display = f"@{channel['username']}" if channel['username'] != 'без username' else "без username"
+                    logging.info(f"   - {channel['title']} (ID: {channel['id']}) {username_display}")
             
         except Exception as e:
             logging.error(f"❌ Ошибка при обновлении списка каналов: {e}")
