@@ -161,7 +161,7 @@ async def process_message_by_essence(post_id: int, text_content: str) -> Tuple[f
     universal_score: int = 0
     symbolic_score: int = 0
     viral_score: int = 0
-    social_score: int = 0
+    narrative_score: int = 0
     essence_explain: str = "Анализ по сути не выполнен"
     
 
@@ -196,7 +196,7 @@ async def process_message_by_essence(post_id: int, text_content: str) -> Tuple[f
         universal_score = essence_result_json.get("universal_score", 0)
         symbolic_score = essence_result_json.get("symbolic_score", 0)
         viral_score = essence_result_json.get("viral_score", 0)
-        social_score= essence_result_json.get("social_score", 0)
+        narrative_score= essence_result_json.get("narrative_score", 0)
 
         essence_explain = essence_result_json.get("essence_explain", "Нет объяснения от ИИ.")
 
@@ -211,7 +211,7 @@ async def process_message_by_essence(post_id: int, text_content: str) -> Tuple[f
         universal_score = 0
         symbolic_score = 0
         viral_score = 0
-        social_score = 0
+        narrative_score = 0
         essence_explain = "Не удалось выполнить контекстный анализ"
         
-    return emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, social_score, essence_explain
+    return emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score, essence_explain

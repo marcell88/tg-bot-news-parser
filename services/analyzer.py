@@ -7,7 +7,7 @@ from database.database_config import DatabaseConfig
 # Импортируем функцию-обработчик из нового модуля
 # Внимание: для работы этого файла требуется файл msg_processing/msg_handler.py
 from msg_processing.msg_handle import process_message_by_form, process_message_by_essence
-from prompts import CONTEXT_THRESHOLD, ESSENCE_THRESHOLD, ESSENCE_MAX
+from prompts import CONTEXT_THRESHOLD, ESSENCE_THRESHOLD
 
 
 # Настраиваем логирование
@@ -105,19 +105,16 @@ class TextAnalyzer:
                     if context & filter_initial:
                         logging.info(f"Analyzer: начинаем фильтрацию по сути для:{post_id}...")
 
-                        emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, social_score, essence_explain = await process_message_by_essence(
+                        emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score, essence_explain = await process_message_by_essence(
                             post_id, text
                         )
-                        essence_array = [emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, social_score]
+                        essence_array = [emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score]
                         essence_score = sum(essence_array) / len (essence_array)
-                        essence_max = max(essence_array)
-                        essence = (essence_score >= ESSENCE_THRESHOLD) & (essence_max >= ESSENCE_MAX)
-
+                        essence = (essence_score >= ESSENCE_THRESHOLD)
 
                     else:
                         essence = False
                         essence_score = 0.0
-                        essence_max = 0.0
                         essence_explain = 'Проверка по сути не проводилась'
 
                     # 3. Обновление БД с новыми столбцами и пометка finished=TRUE
