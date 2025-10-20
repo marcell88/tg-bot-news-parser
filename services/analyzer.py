@@ -109,7 +109,7 @@ class TextAnalyzer:
                             post_id, text
                         )
                         essence_array = [emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score]
-                        essence_score = sum(essence_array) / len (essence_array)
+                        essence_score = round(sum(essence_array) / len (essence_array))
                         essence = (essence_score >= ESSENCE_THRESHOLD)
 
                     else:
