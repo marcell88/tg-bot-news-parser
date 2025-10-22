@@ -102,7 +102,7 @@ class TextAnalyzer:
 
 
                     # Фильтрация по сути: первыичный отсев и контекст
-                    if context & filter_initial:
+                    if context and filter_initial:
                         logging.info(f"Analyzer: начинаем фильтрацию по сути для:{post_id}...")
 
                         emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score, essence_explain = await process_message_by_essence(

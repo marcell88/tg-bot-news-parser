@@ -1,3 +1,4 @@
+# services/stats.py
 import asyncio
 import logging
 import os
@@ -23,7 +24,7 @@ class Config:
     DB_NAME = DatabaseConfig.DB_NAME
     DB_USER = DatabaseConfig.DB_USER
     DB_PASS = DatabaseConfig.DB_PASS
-
+    
     # Настройки Telegram Bot API
     STATS_BOT_API_KEY = os.getenv('STATS_BOT_API_KEY', '')
     
@@ -257,7 +258,7 @@ class StatsService:
             # Получаем размер БД
             db_size = await self._get_database_size()
 
-            # Формируем сообщение со статистикой (без Markdown)
+            # Формируем сообщение со статистикой
             stats_message = f"""
 📊 Статистика системы мониторинга
 
@@ -275,6 +276,8 @@ class StatsService:
 За последние 24 часа:
 🕐 Все фильтры: {day_filter3_percent:.1f}% ({day_filter3_count}/{day_count})
 
+Дополнительные команды:
+/distr 5.0 - статистика распределения по essence_score
             """.strip()
 
             await update.message.reply_text(stats_message)
@@ -284,7 +287,7 @@ class StatsService:
             await update.message.reply_text("❌ Ошибка при получении статистики.")
 
     async def run_bot(self):
-        """Запускает бота в отдельном потоке."""
+        """Запускает бота с упрощенной логикой."""
         if not self.bot_app:
             logging.error("StatsService: Бот не настроен, запуск невозможен.")
             return
@@ -293,7 +296,7 @@ class StatsService:
             logging.info("StatsService: Запуск бота статистики...")
             self.is_running = True
             
-            # Запускаем бота с обработкой остановки
+            # Простой запуск без сложного управления жизненным циклом
             await self.bot_app.initialize()
             await self.bot_app.start()
             await self.bot_app.updater.start_polling()
@@ -305,14 +308,21 @@ class StatsService:
         except asyncio.CancelledError:
             logging.info("StatsService: Получен сигнал остановки бота")
         except Exception as e:
-            logging.error(f"StatsService: Ошибка при работе бота: {e}")
+            if "Conflict" in str(e):
+                logging.warning("StatsService: Бот уже запущен в другом процессе. Пропускаем запуск.")
+            else:
+                logging.error(f"StatsService: Ошибка при работе бота: {e}")
         finally:
             # Корректно останавливаем бота
-            if hasattr(self.bot_app, 'updater') and self.bot_app.updater:
-                await self.bot_app.updater.stop()
-            if self.bot_app:
-                await self.bot_app.stop()
-                await self.bot_app.shutdown()
+            try:
+                if hasattr(self, 'bot_app') and self.bot_app:
+                    if hasattr(self.bot_app, 'updater') and self.bot_app.updater:
+                        await self.bot_app.updater.stop()
+                    await self.bot_app.stop()
+                    await self.bot_app.shutdown()
+            except Exception as e:
+                logging.error(f"StatsService: Ошибка при остановке бота: {e}")
+            
             logging.info("StatsService: Бот остановлен")
 
     async def stop(self):
@@ -330,19 +340,13 @@ class StatsService:
                 logging.error("StatsService: Не удалось настроить бота, служба остановлена.")
         except Exception as e:
             logging.critical(f"StatsService: Критическая ошибка: {e}")
+        finally:
+            await self.stop()
 
 async def main():
     """Точка входа для службы статистики."""
     stats_service = StatsService()
-    
-    try:
-        await stats_service.run()
-    except KeyboardInterrupt:
-        logging.info("StatsService: Получен KeyboardInterrupt")
-    except Exception as e:
-        logging.error(f"StatsService: Непредвиденная ошибка: {e}")
-    finally:
-        await stats_service.stop()
+    await stats_service.run()
 
 if __name__ == "__main__":
     asyncio.run(main())

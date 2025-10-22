@@ -6,8 +6,9 @@ from services.listener import main as run_listener
 from services.cleaner import main as run_cleaner
 from services.analyzer import main as run_analyzer
 from services.finisher import main as run_finisher
-from services.stats import main as run_stats
-from database.database import Database  # <-- Обновленный импорт
+from services.embedder import main as run_embedder
+from services.tager import main as run_tager  # <-- ДОБАВЛЕН ИМПОРТ
+from database.database import Database
 
 # Настраиваем логирование для точки входа.
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -43,10 +44,12 @@ class ServiceManager:
         """Запускает все службы."""
         services = [
             ("Listener", run_listener),
-            ("Cleaner", run_cleaner),
+            ("Cleaner", run_cleaner), 
             ("Analyzer", run_analyzer),
             ("Finisher", run_finisher),
-            ("Stats", run_stats),
+            ("Tager", run_tager),
+            ("Embedder", run_embedder),
+#            ("Stats", run_stats),
         ]
         
         for name, service_func in services:

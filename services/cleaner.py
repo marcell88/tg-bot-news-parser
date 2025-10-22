@@ -24,9 +24,11 @@ class Config:
     
     # --- НАСТРОЙКИ ОЧИСТКИ ---
     # CLEANUP_INTERVAL_HOURS: Интервал между запусками задачи очистки (в часах)
-    CLEANUP_INTERVAL_HOURS = 2 
+    CLEANUP_INTERVAL_HOURS = 1  # 1) подключался раз в час (а не в два)
     # RETENTION_DAYS: Возраст записей для удаления (в днях), если finished=TRUE
     RETENTION_DAYS = 7 
+    # RETENTION_HOURS_TOP: Возраст записей для удаления из telegram_posts_top (в часах)
+    RETENTION_HOURS_TOP = 24  # 3) для таблицы telegram_posts_top - старше 24 часов
 
 # --- Класс DBCleaner ---
 class DBCleaner:
@@ -36,18 +38,22 @@ class DBCleaner:
     """
     def __init__(self):
         self.db_pool = None
-        # Интервал между запусками цикла очистки (2 часа)
+        # Интервал между запусками цикла очистки (1 час)
         self.cleanup_interval = timedelta(hours=Config.CLEANUP_INTERVAL_HOURS)
-        # Период хранения (7 дней)
-        self.retention_period = timedelta(days=Config.RETENTION_DAYS)
-        logging.info(f"Cleaner: Служба очистки настроена: интервал {Config.CLEANUP_INTERVAL_HOURS}ч, хранение {Config.RETENTION_DAYS} дней.")
+        # Период хранения для telegram_posts (7 дней)
+        self.retention_period_posts = timedelta(days=Config.RETENTION_DAYS)
+        # Период хранения для telegram_posts_top (24 часа)
+        self.retention_period_top = timedelta(hours=Config.RETENTION_HOURS_TOP)
+        logging.info(f"Cleaner: Служба очистки настроена: интервал {Config.CLEANUP_INTERVAL_HOURS}ч, "
+                    f"telegram_posts: {Config.RETENTION_DAYS} дней, "
+                    f"telegram_posts_top: {Config.RETENTION_HOURS_TOP} часов.")
 
     async def _setup_database(self):
         """Получает общий пул подключений из Database менеджера."""
         logging.info("Cleaner: Получение общего пула подключений...")
         try:
             # Используем общий пул вместо создания нового
-            self.db_pool = await Database.get_pool()  # <-- ИЗМЕНИТЬ ЭТУ СТРОКУ
+            self.db_pool = await Database.get_pool()
             logging.info("Cleaner: Пул подключений получен успешно.")
         except Exception as e:
             logging.critical(f"Cleaner: Ошибка при получении пула БД: {e}")
@@ -55,30 +61,49 @@ class DBCleaner:
 
     async def clean_old_posts(self):
         """
-        Выполняет SQL-запрос для удаления записей, которые:
-        1. Имеют статус finished = TRUE.
-        2. Старше, чем заданный период хранения (Config.RETENTION_DAYS).
+        Выполняет SQL-запрос для удаления записей из обеих таблиц:
+        1. telegram_posts: finished = TRUE и старше RETENTION_DAYS
+        2. telegram_posts_top: finished = TRUE и старше RETENTION_HOURS_TOP
         """
         if not self.db_pool:
             logging.error("Cleaner: Невозможно выполнить очистку, пул БД не инициализирован.")
             return
 
-        # Определяем точку отсечения: время, до которого записи будут удалены
-        cutoff_time = datetime.now() - self.retention_period
+        # Определяем точки отсечения для обеих таблиц
+        cutoff_time_posts = datetime.now() - self.retention_period_posts
+        cutoff_time_top = datetime.now() - self.retention_period_top
         
-        logging.info(f"Cleaner: Запуск очистки. Удаляем посты, обработанные и созданные до {cutoff_time.strftime('%Y-%m-%d %H:%M:%S')}.")
+        logging.info(f"Cleaner: Запуск очистки.")
+        logging.info(f"Cleaner: telegram_posts - удаляем до {cutoff_time_posts.strftime('%Y-%m-%d %H:%M:%S')}")
+        logging.info(f"Cleaner: telegram_posts_top - удаляем до {cutoff_time_top.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        total_deleted = 0
 
         try:
             async with self.db_pool.acquire() as conn:
-                # SQL-запрос на удаление
-                result = await conn.execute("""
+                # 2) Очистка таблицы telegram_posts
+                result_posts = await conn.execute("""
                     DELETE FROM telegram_posts 
                     WHERE finished = TRUE AND post_time < $1
-                """, cutoff_time)
+                """, cutoff_time_posts)
                 
                 # Извлекаем количество удаленных строк из ответа
-                deleted_rows = result.split(' ')[1] if len(result.split(' ')) > 1 else '0'
-                logging.info(f"Cleaner: Очистка завершена. Удалено {deleted_rows} старых записей.")
+                deleted_posts = result_posts.split(' ')[1] if len(result_posts.split(' ')) > 1 else '0'
+                total_deleted += int(deleted_posts)
+                logging.info(f"Cleaner: Из telegram_posts удалено {deleted_posts} записей.")
+
+                # 2) Очистка таблицы telegram_posts_top
+                result_top = await conn.execute("""
+                    DELETE FROM telegram_posts_top 
+                    WHERE finished = TRUE AND post_time < $1
+                """, cutoff_time_top)
+                
+                # Извлекаем количество удаленных строк из ответа
+                deleted_top = result_top.split(' ')[1] if len(result_top.split(' ')) > 1 else '0'
+                total_deleted += int(deleted_top)
+                logging.info(f"Cleaner: Из telegram_posts_top удалено {deleted_top} записей.")
+
+                logging.info(f"Cleaner: Очистка завершена. Всего удалено {total_deleted} записей.")
 
         except Exception as e:
             logging.error(f"Cleaner: Ошибка при выполнении операции очистки БД: {e}")
@@ -89,7 +114,7 @@ class DBCleaner:
         await self.clean_old_posts()
         
         while True:
-            # Ожидаем заданный интервал
+            # Ожидаем заданный интервал (1 час)
             await asyncio.sleep(self.cleanup_interval.total_seconds())
             await self.clean_old_posts()
 

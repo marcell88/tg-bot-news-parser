@@ -57,3 +57,5 @@ urllib3==2.4.0
 wrapt==1.17.2
 yandexcloud==0.347.0
 yarl==1.22.0
+sentence-transformers==2.2.2
+numpy==1.24.3
