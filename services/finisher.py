@@ -94,6 +94,26 @@ class MessageFinisher:
             logging.error(f"Finisher: Исключение при отправке сообщения в Telegram: {e}")
             return False
 
+    def _calculate_penalty(self, coincide_24hr: float) -> float:
+        """
+        Рассчитывает штрафной коэффициент на основе coincide_24hr.
+        
+        Args:
+            coincide_24hr: значение от 0 до 1
+            
+        Returns:
+            penalty: коэффициент штрафа (может быть отрицательным - бонус)
+        """
+        if coincide_24hr < 0.3:
+            # Линейный рост от -0.5 до 0 при 0-0.3
+            return -1.0 + (coincide_24hr / 0.3) * 1.0
+        elif coincide_24hr <= 0.7:
+            # Линейный рост от 0 до 1 при 0.3-0.7
+            return (coincide_24hr - 0.3) / 0.4
+        else:
+            # Резкий рост от 1 при значениях > 0.7
+            return 1 + (coincide_24hr - 0.7) * 3
+
     async def _process_top_posts(self):
         """
         Обрабатывает записи из telegram_posts_top.
@@ -132,7 +152,7 @@ class MessageFinisher:
                         coincide_24hr = post['coincide_24hr'] or 0.0
                         
                         # final_score = essence - max_fee*coincide_24hr
-                        final_score = essence - (Config.MAX_FEE * coincide_24hr)
+                        final_score = essence - self._calculate_penalty(coincide_24hr)
                         
                         # Если где-то null или ошибка - ставим 0
                         if essence is None or coincide_24hr is None:
