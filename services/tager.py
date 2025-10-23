@@ -93,11 +93,11 @@ class PostTagger:
                     
                     if tags:
                         # Обрабатываем возможные None значения и ограничиваем длину
-                        tag1 = self._sanitize_tag(tags.get('subject'))
-                        tag2 = self._sanitize_tag(tags.get('action'))
-                        tag3 = self._sanitize_tag(tags.get('time_place'))
-                        tag4 = self._sanitize_tag(tags.get('reason'))
-                        tag5 = self._sanitize_tag(tags.get('source'))
+                        tag1 = self._sanitize_tag(tags.get('tag1'))
+                        tag2 = self._sanitize_tag(tags.get('tag2'))
+                        tag3 = self._sanitize_tag(tags.get('tag3'))
+                        tag4 = self._sanitize_tag(tags.get('tag4'))
+                        tag5 = self._sanitize_tag(tags.get('tag5'))
                         
                         # 4. Обновление БД с полученными тегами
                         await conn.execute("""

@@ -183,11 +183,11 @@ class Database:
                         final BOOLEAN DEFAULT FALSE,
                         finished BOOLEAN DEFAULT FALSE,
 
-                        subject REAL,
-                        action REAL,
-                        time_place REAL,
-                        reason REAL,
-                        source REAL
+                        tag1_score REAL,
+                        tag2_score REAL,
+                        tag3_score REAL,
+                        tag4_score REAL,
+                        tag5_score REAL
                     );
                 """)
                 logging.info("✅ Таблица 'telegram_posts_top' создана/проверена")
@@ -251,11 +251,11 @@ class Database:
             'final': 'BOOLEAN DEFAULT FALSE',
             'finished': 'BOOLEAN DEFAULT FALSE',
 
-            'subject': 'REAL',
-            'action': 'REAL',
-            'time_place': 'REAL',
-            'reason': 'REAL',
-            'source': 'REAL',
+            'tag1_score': 'REAL',
+            'tag2_score': 'REAL',
+            'tag3_score': 'REAL',
+            'tag4_score': 'REAL',
+            'tag5_score': 'REAL',
         }
     
     @classmethod

@@ -96,23 +96,23 @@ class MessageFinisher:
 
     def _calculate_penalty(self, coincide_24hr: float) -> float:
         """
-        Рассчитывает штрафной коэффициент на основе coincide_24hr.
-        
-        Args:
-            coincide_24hr: значение от 0 до 1
-            
-        Returns:
-            penalty: коэффициент штрафа (может быть отрицательным - бонус)
+        Вычисляет штраф для final_score на основе coincide_24hr.
+        Точная формула:
+        - coincide_24hr от 0 до 0.5: рост штрафа с -1 до 0 (отрицательный штраф - вознаграждение)
+        - coincide_24hr от 0.5 до 0.7: рост штрафа с 0 до 0.5  
+        - coincide_24hr от 0.7 до 1: рост штрафа с 0.5 до 2.0
         """
-        if coincide_24hr < 0.3:
-            # Линейный рост от -0.5 до 0 при 0-0.3
-            return -1.0 + (coincide_24hr / 0.3) * 1.0
-        elif coincide_24hr <= 0.7:
-            # Линейный рост от 0 до 1 при 0.3-0.7
-            return (coincide_24hr - 0.3) / 0.4
+        if coincide_24hr < 0.5:
+            # Линейная интерполяция от -1 до 0
+            penalty = -1.0 + (coincide_24hr / 0.5) * 1.0
+        elif coincide_24hr < 0.7:
+            # Линейная интерполяция от 0 до 0.5
+            penalty = 0.0 + ((coincide_24hr - 0.5) / 0.2) * 0.5
         else:
-            # Резкий рост от 1 при значениях > 0.7
-            return 1 + (coincide_24hr - 0.7) * 3
+            # Линейная интерполяция от 0.5 до 2.0
+            penalty = 0.5 + ((coincide_24hr - 0.7) / 0.3) * 1.5
+        
+        return penalty
 
     async def _process_top_posts(self):
         """
@@ -295,7 +295,7 @@ class MessageFinisher:
                     tag1, tag2, tag3, tag4, tag5, vector1, vector2, vector3, vector4, vector5, taged,
                     finished, analyzed, coincide_24hr, 
                     final_score, final,
-                    subject, action, time_place, reason, source
+                    tag1_score, tag2_score, tag3_score, tag4_score, tag5_score
                 ) VALUES (
                     $1, $2, $3, $4, $5,
                     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, FALSE,
