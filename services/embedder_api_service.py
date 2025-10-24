@@ -3,6 +3,7 @@ import asyncio
 import logging
 import numpy as np
 import aiohttp
+import os
 from database.database import Database
 from database.database_config import DatabaseConfig
 
@@ -21,15 +22,15 @@ class Config:
     DB_PASS = DatabaseConfig.DB_PASS
     
     # Настройки embedder
-    EMBEDDER_INTERVAL_SECONDS = 5
-    BATCH_SIZE = 1
+    EMBEDDER_INTERVAL_SECONDS = 30
+    BATCH_SIZE = 5
     
     # Используем комбинированную метрику вместо отдельных
     SIMILARITY_METRIC = 'combined'  # 'cosine', 'euclidean', или 'combined'
     
     # API Keys (заполнить своими ключами)
-    HUGGINGFACE_API_KEY = "YOUR_HF_API_KEY"  # Получить на https://huggingface.co/settings/tokens
-    COHERE_API_KEY = "YOUR_COHERE_API_KEY"    # Получить на https://dashboard.cohere.com/
+    HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
+    COHERE_API_KEY = os.getenv('COHERE_API_KEY')
 
 class APIEmbedderService:
     """
@@ -359,7 +360,6 @@ class EmbedderService:
     def _calculate_similarity(self, vec1: list, vec2: list) -> float:
         """
         Универсальная функция для расчета сходства в зависимости от выбранной метрики.
-        ВНИМАНИЕ: Эта функция НЕ проверяет нулевые вектора!
         """
         if self.similarity_metric == 'euclidean':
             return self._euclidean_similarity(vec1, vec2)
@@ -401,30 +401,6 @@ class EmbedderService:
             logging.error(f"Embedder: Ошибка парсинга эмбеддинга '{embedding_str[:100] if embedding_str else 'None'}...': {e}")
             return [0.0] * 384
 
-    def _is_zero_vector(self, vector: list) -> bool:
-        """
-        Проверяет, является ли вектор нулевым.
-        """
-        if not vector:
-            return True
-        norm = np.linalg.norm(vector)
-        return norm < 0.001
-
-    def _calculate_vector_similarity(self, vec1: list, vec2: list) -> float:
-        """
-        Вычисляет сходство между двумя векторами с проверкой на нулевые векторы.
-        Возвращает -1 если хотя бы один вектор нулевой.
-        """
-        vec1_zero = self._is_zero_vector(vec1)
-        vec2_zero = self._is_zero_vector(vec2)
-        
-        # Если хотя бы один вектор нулевой - возвращаем -1
-        if vec1_zero or vec2_zero:
-            return -1.0
-        
-        # Оба вектора ненулевые - вычисляем сходство
-        return self._calculate_similarity(vec1, vec2)
-
     async def _calculate_similarities(self, conn, current_post_id: int, current_embeddings: list) -> dict:
         """
         Вычисляет максимальное сходство для каждого тега с предыдущими записями.
@@ -451,22 +427,22 @@ class EmbedderService:
             if not previous_records:
                 logging.debug(f"Embedder: Нет предыдущих записей с final=TRUE для сравнения с ID:{current_post_id}")
                 return {
-                    'tag1_score': -1.0,
-                    'tag2_score': -1.0,
-                    'tag3_score': -1.0,
-                    'tag4_score': -1.0,
-                    'tag5_score': -1.0
+                    'tag1_score': 0.0,
+                    'tag2_score': 0.0,
+                    'tag3_score': 0.0,
+                    'tag4_score': 0.0,
+                    'tag5_score': 0.0
                 }
             
             logging.info(f"Embedder: Найдено {len(previous_records)} предыдущих записей с final=TRUE для сравнения")
             
             # Инициализируем максимальные значения сходства
             max_similarities = {
-                'tag1_score': -1.0,
-                'tag2_score': -1.0,
-                'tag3_score': -1.0,
-                'tag4_score': -1.0,
-                'tag5_score': -1.0
+                'tag1_score': 0.0,
+                'tag2_score': 0.0,
+                'tag3_score': 0.0,
+                'tag4_score': 0.0,
+                'tag5_score': 0.0
             }
             
             processed_count = 0
@@ -483,12 +459,9 @@ class EmbedderService:
                     # Вычисляем сходство для каждого тега
                     for i, tag_name in enumerate(['tag1_score', 'tag2_score', 'tag3_score', 'tag4_score', 'tag5_score']):
                         if i < len(current_embeddings) and i < len(prev_vectors):
-                            similarity = self._calculate_vector_similarity(current_embeddings[i], prev_vectors[i])
-                            
-                            # Обновляем максимальное значение только если similarity != -1
-                            if similarity != -1.0:
-                                if max_similarities[tag_name] == -1.0 or similarity > max_similarities[tag_name]:
-                                    max_similarities[tag_name] = similarity
+                            similarity = self._calculate_similarity(current_embeddings[i], prev_vectors[i])
+                            if similarity > max_similarities[tag_name]:
+                                max_similarities[tag_name] = similarity
                     
                     processed_count += 1
                             
@@ -502,11 +475,11 @@ class EmbedderService:
         except Exception as e:
             logging.error(f"Embedder: Ошибка расчета сходства для ID:{current_post_id}: {e}")
             return {
-                'tag1_score': -1.0,
-                'tag2_score': -1.0,
-                'tag3_score': -1.0,
-                'tag4_score': -1.0,
-                'tag5_score': -1.0
+                'tag1_score': 0.0,
+                'tag2_score': 0.0,
+                'tag3_score': 0.0,
+                'tag4_score': 0.0,
+                'tag5_score': 0.0
             }
 
     async def _check_existing_vectors_quality(self, conn, post_id: int) -> bool:
@@ -600,14 +573,13 @@ class EmbedderService:
                             tag_field = f'tag{i}'
                             tag_text = record[tag_field]
                             
-                            # Если тег "нет информации" или пустой - используем нулевой вектор
-                            if not tag_text or tag_text.lower() in ['нет информации', 'нет данных', '']:
-                                logging.info(f"Embedder: Тег {tag_field} содержит 'нет информации', используем нулевой вектор")
-                                embedding = [0.0] * 384
-                            else:
+                            if tag_text:
                                 logging.info(f"Embedder: Генерация эмбеддинга для {tag_field}: '{tag_text}'")
                                 embedding = await self._get_text_embedding(tag_text)
                                 logging.info(f"Embedder: Эмбеддинг для {tag_field} сгенерирован, размерность: {len(embedding)}")
+                            else:
+                                logging.info(f"Embedder: Тег {tag_field} пустой, используем нулевой вектор")
+                                embedding = [0.0] * 384  # Пустой вектор для пустого тега
                             
                             embeddings.append(embedding)
                         
@@ -616,8 +588,11 @@ class EmbedderService:
                         # Вычисляем сходство с предыдущими записями (ТОЛЬКО final = TRUE)
                         similarities = await self._calculate_similarities(conn, post_id, embeddings)
                         
-                        # ВЫЧИСЛЯЕМ СРЕДНЕЕ АРИФМЕТИЧЕСКОЕ для coincide_24hr (только положительные значения)
-                        coincide_24hr = self._calculate_coincide_24hr(similarities)
+                        # ПРИМЕНЯЕМ ДИСКРЕТИЗАЦИЮ значений сходства
+                        discrete_similarities = self._discretize_similarities(similarities)
+                        
+                        # ВЫЧИСЛЯЕМ СРЕДНЕЕ АРИФМЕТИЧЕСКОЕ для coincide_24hr
+                        coincide_24hr = self._calculate_coincide_24hr(discrete_similarities)
                         
                         # Обновляем запись в БД с ПЕРЕСЧИТАННЫМИ векторами и сходством
                         await conn.execute("""
@@ -642,20 +617,20 @@ class EmbedderService:
                         str(embeddings[2]),              # vector3 (ПЕРЕСЧИТАН)
                         str(embeddings[3]),              # vector4 (ПЕРЕСЧИТАН)
                         str(embeddings[4]),              # vector5 (ПЕРЕСЧИТАН)
-                        similarities['tag1_score'],
-                        similarities['tag2_score'],
-                        similarities['tag3_score'],
-                        similarities['tag4_score'],
-                        similarities['tag5_score'],
+                        discrete_similarities['tag1_score'],
+                        discrete_similarities['tag2_score'],
+                        discrete_similarities['tag3_score'],
+                        discrete_similarities['tag4_score'],
+                        discrete_similarities['tag5_score'],
                         coincide_24hr,
                         post_id)
                         
                         logging.info(f"Embedder: Запись ID:{post_id} успешно обработана с ПЕРЕСЧЕТОМ векторов. "
-                                f"Сходство: tag1={similarities['tag1_score']:.3f}, "
-                                f"tag2={similarities['tag2_score']:.3f}, "
-                                f"tag3={similarities['tag3_score']:.3f}, "
-                                f"tag4={similarities['tag4_score']:.3f}, "
-                                f"tag5={similarities['tag5_score']:.3f}, "
+                                f"Сходство: tag1={discrete_similarities['tag1_score']:.3f}, "
+                                f"tag2={discrete_similarities['tag2_score']:.3f}, "
+                                f"tag3={discrete_similarities['tag3_score']:.3f}, "
+                                f"tag4={discrete_similarities['tag4_score']:.3f}, "
+                                f"tag5={discrete_similarities['tag5_score']:.3f}, "
                                 f"coincide_24hr={coincide_24hr:.3f}")
                         
                     except Exception as e:
@@ -665,27 +640,44 @@ class EmbedderService:
         except Exception as e:
             logging.error(f"Embedder: Ошибка при обработке батча: {e}")
 
-    def _calculate_coincide_24hr(self, similarities: dict) -> float:
+    def _discretize_similarity(self, similarity: float) -> float:
         """
-        Вычисляет среднее арифметическое всех значений сходства.
-        Учитывает только положительные или нулевые значения.
-        Если все значения отрицательные, возвращает 0.
+        Применяет дискретизацию к значению сходства по заданным правилам.
+        """
+        if similarity >= 0.7:
+            return 1.0
+        elif similarity >= 0.4:
+            return 0.5
+        elif similarity >= 0.2:
+            return 0.25
+        else:
+            return 0.0
+
+    def _discretize_similarities(self, similarities: dict) -> dict:
+        """
+        Применяет дискретизацию ко всем значениям сходства.
+        """
+        return {
+            'tag1_score': self._discretize_similarity(similarities['tag1_score']),
+            'tag2_score': self._discretize_similarity(similarities['tag2_score']),
+            'tag3_score': self._discretize_similarity(similarities['tag3_score']),
+            'tag4_score': self._discretize_similarity(similarities['tag4_score']),
+            'tag5_score': self._discretize_similarity(similarities['tag5_score'])
+        }
+
+    def _calculate_coincide_24hr(self, discrete_similarities: dict) -> float:
+        """
+        Вычисляет среднее арифметическое всех дискретизированных значений сходства.
         """
         values = [
-            similarities['tag1_score'],
-            similarities['tag2_score'], 
-            similarities['tag3_score'],
-            similarities['tag4_score'],
-            similarities['tag5_score']
+            discrete_similarities['tag1_score'],
+            discrete_similarities['tag2_score'], 
+            discrete_similarities['tag3_score'],
+            discrete_similarities['tag4_score'],
+            discrete_similarities['tag5_score']
         ]
         
-        # Фильтруем только положительные или нулевые значения
-        positive_values = [v for v in values if v >= 0]
-        
-        if not positive_values:
-            return 0.0
-        
-        return sum(positive_values) / len(positive_values)
+        return sum(values) / len(values)
 
     async def _embedder_loop(self):
         """Асинхронный цикл для регулярной обработки эмбеддингов."""
