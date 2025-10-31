@@ -2,7 +2,7 @@
 import asyncio
 import logging
 import numpy as np
-import aiohttp
+from sentence_transformers import SentenceTransformer
 from database.database import Database
 from database.database_config import DatabaseConfig
 
@@ -27,166 +27,23 @@ class Config:
     # Используем комбинированную метрику вместо отдельных
     SIMILARITY_METRIC = 'combined'  # 'cosine', 'euclidean', или 'combined'
     
-    # API Keys (заполнить своими ключами)
-    HUGGINGFACE_API_KEY = "YOUR_HF_API_KEY"  # Получить на https://huggingface.co/settings/tokens
-    COHERE_API_KEY = "YOUR_COHERE_API_KEY"    # Получить на https://dashboard.cohere.com/
-
-class APIEmbedderService:
-    """
-    Универсальная служба эмбеддингов через бесплатные API
-    с fallback стратегией
-    """
-    
-    def __init__(self):
-        self.providers = []
-        self.current_provider_index = 0
-        self.session = None
-        self.cache = {}  # Простое in-memory кэширование
-        
-    async def setup(self):
-        """Инициализация API провайдеров"""
-        self.session = aiohttp.ClientSession()
-        
-        # Инициализируем провайдеры
-        self.providers = []
-        
-        # Hugging Face (бесплатно, 30k/месяц)
-        if Config.HUGGINGFACE_API_KEY and Config.HUGGINGFACE_API_KEY != "YOUR_HF_API_KEY":
-            self.providers.append({
-                'name': 'huggingface',
-                'url': 'https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2',
-                'headers': {'Authorization': f'Bearer {Config.HUGGINGFACE_API_KEY}'},
-                'payload_func': self._prepare_hf_payload,
-                'parse_func': self._parse_hf_response
-            })
-        
-        # Cohere (бесплатно, 100k/месяц)
-        if Config.COHERE_API_KEY and Config.COHERE_API_KEY != "YOUR_COHERE_API_KEY":
-            self.providers.append({
-                'name': 'cohere',
-                'url': 'https://api.cohere.ai/v1/embed',
-                'headers': {'Authorization': f'Bearer {Config.COHERE_API_KEY}'},
-                'payload_func': self._prepare_cohere_payload,
-                'parse_func': self._parse_cohere_response
-            })
-        
-        if not self.providers:
-            logging.warning("⚠️ Нет настроенных API провайдеров. Используем fallback эмбеддинги.")
-        else:
-            logging.info(f"✅ Настроено {len(self.providers)} API провайдеров")
-        
-    async def get_embedding(self, text: str, use_cache: bool = True) -> list:
-        """Получает эмбеддинг через API с кэшированием"""
-        if not text or not text.strip():
-            return [0.0] * 384
-            
-        # Проверяем кэш
-        cache_key = hash(text)
-        if use_cache and cache_key in self.cache:
-            return self.cache[cache_key]
-        
-        # Если нет провайдеров - сразу возвращаем fallback
-        if not self.providers:
-            return self._get_fallback_embedding(text)
-        
-        # Пробуем всех провайдеров по очереди
-        for attempt in range(len(self.providers)):
-            provider = self.providers[self.current_provider_index]
-            embedding = await self._try_provider(provider, text)
-            
-            if embedding:
-                # Сохраняем в кэш
-                self.cache[cache_key] = embedding
-                return embedding
-                
-            # Переходим к следующему провайдеру
-            self.current_provider_index = (self.current_provider_index + 1) % len(self.providers)
-        
-        # Все провайдеры не сработали - возвращаем заглушку
-        logging.error("❌ Все API провайдеры недоступны")
-        return self._get_fallback_embedding(text)
-    
-    async def _try_provider(self, provider: dict, text: str) -> list:
-        """Пробует получить эмбеддинг через конкретного провайдера"""
-        try:
-            payload = provider['payload_func'](text)
-            
-            async with self.session.post(
-                provider['url'], 
-                headers=provider['headers'], 
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=10)
-            ) as response:
-                
-                if response.status == 200:
-                    result = await response.json()
-                    embedding = provider['parse_func'](result)
-                    logging.debug(f"✅ Эмбеддинг получен через {provider['name']}")
-                    return embedding
-                else:
-                    error_text = await response.text()
-                    logging.warning(f"⚠️ {provider['name']} API error: {response.status} - {error_text}")
-                    return None
-                    
-        except asyncio.TimeoutError:
-            logging.warning(f"⚠️ {provider['name']} timeout")
-            return None
-        except Exception as e:
-            logging.warning(f"⚠️ {provider['name']} error: {e}")
-            return None
-    
-    def _prepare_hf_payload(self, text: str) -> dict:
-        return {"inputs": text}
-    
-    def _parse_hf_response(self, result) -> list:
-        # HF возвращает сразу вектор
-        if isinstance(result, list) and len(result) > 0:
-            return result
-        elif isinstance(result, dict) and 'embeddings' in result:
-            return result['embeddings']
-        else:
-            return [0.0] * 384
-    
-    def _prepare_cohere_payload(self, text: str) -> dict:
-        return {
-            "texts": [text],
-            "model": "embed-english-v3.0",
-            "input_type": "search_document"
-        }
-    
-    def _parse_cohere_response(self, result) -> list:
-        if 'embeddings' in result and len(result['embeddings']) > 0:
-            return result['embeddings'][0]
-        return [0.0] * 384
-    
-    def _get_fallback_embedding(self, text: str) -> list:
-        """Простая заглушка на основе хэша текста"""
-        import hashlib
-        if not text:
-            return [0.0] * 384
-        seed = int(hashlib.md5(text.encode()).hexdigest()[:8], 16)
-        np.random.seed(seed)
-        return np.random.normal(0, 0.1, 384).tolist()
-    
-    async def close(self):
-        """Закрывает сессию"""
-        if self.session:
-            await self.session.close()
-
-# Глобальный инстанс API сервиса
-api_embedder = APIEmbedderService()
+    # Модель для настоящих семантических эмбеддингов
+    EMBEDDING_MODEL = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+    EMBEDDING_DIMENSION = 768
 
 class EmbedderService:
     """
     Служба для создания эмбеддингов тегов и расчета сходства.
-    Использует бесплатные API для получения эмбеддингов.
-    Пересчитывает вектора каждый раз при analyzed = FALSE.
+    Использует настоящие семантические эмбеддинги через sentence-transformers.
+    Вся остальная логика остается без изменений.
     """
     def __init__(self):
         self.db_pool = None
         self.interval = Config.EMBEDDER_INTERVAL_SECONDS
         self.is_running = False
         self.similarity_metric = Config.SIMILARITY_METRIC
+        self.model = None
+        self.embedding_dim = Config.EMBEDDING_DIMENSION
         logging.info(f"Embedder: Служба эмбеддингов инициализирована. Метрика: {self.similarity_metric}")
 
     async def _setup_database(self):
@@ -195,31 +52,47 @@ class EmbedderService:
         try:
             # Используем отдельный пул для embedder
             self.db_pool = await Database.get_embedder_pool()
-            # Инициализируем API сервис
-            await api_embedder.setup()
-            logging.info("Embedder: Отдельный пул подключений и API сервис получены успешно.")
+            logging.info("Embedder: Отдельный пул подключений получен успешно.")
         except Exception as e:
             logging.critical(f"Embedder: Ошибка при настройке базы данных: {e}")
             raise
 
-    async def _get_text_embedding(self, text: str) -> list:
+    def _load_model(self):
+        """Загружает модель для создания эмбеддингов (вызывается при первом использовании)."""
+        if self.model is None:
+            try:
+                logging.info(f"Embedder: Загрузка модели {Config.EMBEDDING_MODEL}...")
+                self.model = SentenceTransformer(Config.EMBEDDING_MODEL)
+                logging.info("Embedder: Модель загружена успешно.")
+            except Exception as e:
+                logging.critical(f"Embedder: Ошибка загрузки модели: {e}")
+                raise
+
+    def _get_text_embedding(self, text: str) -> list:
         """
-        Генерирует эмбеддинг для текста через API.
+        Генерирует настоящий семантический эмбеддинг для текста.
+        Заменяет старую хэш-версию на настоящую модель.
         """
         # Проверка пустого текста
         if not text or not text.strip():
             logging.debug("Embedder: Получен пустой текст, возвращаем нулевой вектор")
-            return [0.0] * 384
+            return [0.0] * self.embedding_dim
 
         try:
-            embedding = await api_embedder.get_embedding(text)
-            logging.debug(f"Embedder: Сгенерирован эмбеддинг, размерность: {len(embedding)}")
+            # Загружаем модель при первом использовании
+            self._load_model()
+            
+            # Создаем настоящий семантический эмбеддинг
+            embedding = self.model.encode([text])[0].tolist()
+            
+            logging.debug(f"Embedder: Сгенерирован семантический эмбеддинг, размерность: {len(embedding)}")
             return embedding
             
         except Exception as e:
             logging.error(f"Embedder: Ошибка генерации эмбеддинга для текста '{text[:50]}...': {e}")
-            return api_embedder._get_fallback_embedding(text)
+            return [0.0] * self.embedding_dim
 
+    # ВСЕ ОСТАЛЬНЫЕ МЕТОДЫ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ
     def _cosine_similarity(self, vec1: list, vec2: list) -> float:
         """
         Вычисляет косинусное сходство между двумя векторами.
@@ -376,30 +249,77 @@ class EmbedderService:
         """
         try:
             if embedding_str is None:
-                return [0.0] * 384
+                return [0.0] * self.embedding_dim
                 
+            # Если уже список - возвращаем как есть (но убедимся, что это float)
             if isinstance(embedding_str, list):
-                return embedding_str
-                
-            if embedding_str.startswith('[') and embedding_str.endswith(']'):
-                # Убираем скобки и разбиваем по запятым
-                parts = embedding_str[1:-1].split(',')
-                return [float(x.strip()) for x in parts if x.strip()]
-            else:
-                # Пробуем literal_eval для других форматов
-                import ast
                 try:
-                    result = ast.literal_eval(embedding_str)
-                    if isinstance(result, list):
+                    return [float(x) for x in embedding_str]
+                except (ValueError, TypeError):
+                    logging.warning("Embedder: Ошибка преобразования списка к float, возвращаем нулевой вектор")
+                    return [0.0] * self.embedding_dim
+            
+            # Если это строка (основной случай из БД)
+            if isinstance(embedding_str, str):
+                # Убираем лишние пробелы и проверяем формат
+                embedding_str = embedding_str.strip()
+                
+                if embedding_str.startswith('[') and embedding_str.endswith(']'):
+                    try:
+                        # Убираем скобки и разбиваем по запятым
+                        content = embedding_str[1:-1].strip()
+                        if not content:  # Пустой список []
+                            return [0.0] * self.embedding_dim
+                            
+                        parts = content.split(',')
+                        result = []
+                        
+                        for part in parts:
+                            part = part.strip()
+                            if part:  # Пропускаем пустые элементы
+                                try:
+                                    result.append(float(part))
+                                except ValueError as e:
+                                    logging.warning(f"Embedder: Ошибка преобразования '{part}' в float: {e}")
+                                    result.append(0.0)
+                        
+                        # ПРОВЕРКА РАЗМЕРНОСТИ
+                        if len(result) != self.embedding_dim:
+                            logging.warning(f"Embedder: Парсинг создал вектор размерности {len(result)}")
+                            if len(result) > self.embedding_dim:
+                                result = result[:self.embedding_dim]
+                            else:
+                                result = result + [0.0] * (self.embedding_dim - len(result))
+                        
+                        # ОТЛАДКА: логируем успешный парсинг
+                        if len(result) == self.embedding_dim:
+                            logging.debug(f"Embedder: Успешно распарсен вектор")
+                            logging.debug(f"Embedder: Первые 3 элемента: {result[:3]}")
+                        
                         return result
-                    else:
-                        return [0.0] * 384
-                except:
-                    return [0.0] * 384
+                        
+                    except Exception as e:
+                        logging.error(f"Embedder: Ошибка парсинга строки эмбеддинга: {e}")
+                        return [0.0] * self.embedding_dim
+                else:
+                    # Пробуем literal_eval для других форматов
+                    import ast
+                    try:
+                        result = ast.literal_eval(embedding_str)
+                        if isinstance(result, list):
+                            return [float(x) for x in result]
+                        else:
+                            return [0.0] * self.embedding_dim
+                    except:
+                        logging.warning(f"Embedder: Непонятный формат эмбеддинга: {embedding_str[:100]}...")
+                        return [0.0] * self.embedding_dim
+            else:
+                logging.warning(f"Embedder: Неподдерживаемый тип эмбеддинга: {type(embedding_str)}")
+                return [0.0] * self.embedding_dim
                     
         except Exception as e:
-            logging.error(f"Embedder: Ошибка парсинга эмбеддинга '{embedding_str[:100] if embedding_str else 'None'}...': {e}")
-            return [0.0] * 384
+            logging.error(f"Embedder: Критическая ошибка парсинга эмбеддинга: {e}")
+            return [0.0] * self.embedding_dim
 
     def _is_zero_vector(self, vector: list) -> bool:
         """
@@ -407,8 +327,11 @@ class EmbedderService:
         """
         if not vector:
             return True
-        norm = np.linalg.norm(vector)
-        return norm < 0.001
+        try:
+            norm = np.linalg.norm(vector)
+            return norm < 0.001
+        except:
+            return True
 
     def _calculate_vector_similarity(self, vec1: list, vec2: list) -> float:
         """
@@ -473,16 +396,35 @@ class EmbedderService:
             # Для каждой предыдущей записи вычисляем сходство по каждому тегу
             for record in previous_records:
                 try:
-                    # Парсим вектора предыдущей записи
+                    # Парсим вектора предыдущей записи ИЗ БД
                     prev_vectors = []
                     for i in range(1, 6):
                         vector_field = f'vector{i}'
                         vector_str = record[vector_field]
-                        prev_vectors.append(self._parse_embedding_string(vector_str))
+                        
+                        # ОТЛАДКА: что мы получаем из БД
+                        if processed_count == 0 and i == 1:  # Только для первой записи первого вектора
+                            logging.info(f"Embedder DEBUG: Тип данных из БД для {vector_field}: {type(vector_str)}")
+                            if vector_str and len(str(vector_str)) > 100:
+                                logging.info(f"Embedder DEBUG: Первые 100 символов: {str(vector_str)[:100]}...")
+                        
+                        prev_vector = self._parse_embedding_string(vector_str)
+                        prev_vectors.append(prev_vector)
                     
                     # Вычисляем сходство для каждого тега
                     for i, tag_name in enumerate(['tag1_score', 'tag2_score', 'tag3_score', 'tag4_score', 'tag5_score']):
                         if i < len(current_embeddings) and i < len(prev_vectors):
+                            # ОТЛАДКА: проверяем типы данных перед сравнением
+                            current_vec = current_embeddings[i]
+                            prev_vec = prev_vectors[i]
+                            
+                            if processed_count == 0 and i == 0:  # Только для первого сравнения
+                                logging.info(f"Embedder DEBUG: Тип current_embeddings[{i}]: {type(current_vec)}")
+                                logging.info(f"Embedder DEBUG: Тип prev_vectors[{i}]: {type(prev_vec)}")
+                                logging.info(f"Embedder DEBUG: Длина current: {len(current_vec)}, prev: {len(prev_vec)}")
+                                logging.info(f"Embedder DEBUG: Первые 3 элемента current: {current_vec[:3]}")
+                                logging.info(f"Embedder DEBUG: Первые 3 элемента prev: {prev_vec[:3]}")
+                            
                             similarity = self._calculate_vector_similarity(current_embeddings[i], prev_vectors[i])
                             
                             # Обновляем максимальное значение только если similarity != -1
@@ -538,14 +480,13 @@ class EmbedderService:
                 vector = self._parse_embedding_string(vector_str)
                 
                 # Проверяем размерность
-                if len(vector) != 384:
+                if len(vector) != self.embedding_dim:
                     logging.info(f"Embedder: Вектор {vector_field} имеет неправильную размерность {len(vector)}, требуется пересчет")
                     return True
                 
                 # Проверяем на нулевой вектор
-                norm = np.linalg.norm(vector)
-                if norm < 0.001:  # Почти нулевой вектор
-                    logging.info(f"Embedder: Вектор {vector_field} почти нулевой (норма={norm:.4f}), требуется пересчет")
+                if self._is_zero_vector(vector):
+                    logging.info(f"Embedder: Вектор {vector_field} нулевой, требуется пересчет")
                     return True
             
             logging.info(f"Embedder: Существующие вектора для ID:{post_id} в порядке, но все равно пересчитываем")
@@ -603,15 +544,15 @@ class EmbedderService:
                             # Если тег "нет информации" или пустой - используем нулевой вектор
                             if not tag_text or tag_text.lower() in ['нет информации', 'нет данных', '']:
                                 logging.info(f"Embedder: Тег {tag_field} содержит 'нет информации', используем нулевой вектор")
-                                embedding = [0.0] * 384
+                                embedding = [0.0] * self.embedding_dim
                             else:
-                                logging.info(f"Embedder: Генерация эмбеддинга для {tag_field}: '{tag_text}'")
-                                embedding = await self._get_text_embedding(tag_text)
-                                logging.info(f"Embedder: Эмбеддинг для {tag_field} сгенерирован, размерность: {len(embedding)}")
+                                logging.info(f"Embedder: Генерация семантического эмбеддинга для {tag_field}: '{tag_text}'")
+                                embedding = self._get_text_embedding(tag_text)
+                                logging.info(f"Embedder: Семантический эмбеддинг для {tag_field} сгенерирован, размерность: {len(embedding)}")
                             
                             embeddings.append(embedding)
                         
-                        logging.info(f"Embedder: Все эмбеддинги пересчитаны для ID:{post_id}")
+                        logging.info(f"Embedder: Все семантические эмбеддинги пересчитаны для ID:{post_id}")
                         
                         # Вычисляем сходство с предыдущими записями (ТОЛЬКО final = TRUE)
                         similarities = await self._calculate_similarities(conn, post_id, embeddings)
@@ -708,7 +649,6 @@ class EmbedderService:
             logging.critical(f"Embedder: Критическая ошибка в службе эмбеддингов. Остановка: {e}")
         finally:
             self.is_running = False
-            await api_embedder.close()
             logging.info("Embedder: Служба остановлена")
 
 async def main():
@@ -718,7 +658,7 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        logging.info("=== ЗАПУСК EMBEDDER СЛУЖБЫ (API РЕЖИМ) ===")
+        logging.info("=== ЗАПУСК EMBEDDER СЛУЖБЫ (СЕМАНТИЧЕСКИЙ РЕЖИМ) ===")
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("Embedder: Остановка службы по запросу пользователя.")

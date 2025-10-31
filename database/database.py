@@ -169,11 +169,11 @@ class Database:
                         tag4 TEXT,
                         tag5 TEXT,
                         
-                        vector1 vector(384),
-                        vector2 vector(384),
-                        vector3 vector(384),
-                        vector4 vector(384),
-                        vector5 vector(384),
+                        vector1 vector(768),
+                        vector2 vector(768),
+                        vector3 vector(768),
+                        vector4 vector(768),
+                        vector5 vector(768),
                         
                         taged BOOLEAN DEFAULT FALSE,
                         analyzed BOOLEAN DEFAULT FALSE,
@@ -237,11 +237,11 @@ class Database:
             'tag4': 'TEXT',
             'tag5': 'TEXT',
             
-            'vector1': 'vector(384)',
-            'vector2': 'vector(384)',
-            'vector3': 'vector(384)',
-            'vector4': 'vector(384)',
-            'vector5': 'vector(384)',
+            'vector1': 'vector(768)',
+            'vector2': 'vector(768)',
+            'vector3': 'vector(768)',
+            'vector4': 'vector(768)',
+            'vector5': 'vector(768)',
             
             'taged': 'BOOLEAN DEFAULT FALSE',
             'analyzed': 'BOOLEAN DEFAULT FALSE',
