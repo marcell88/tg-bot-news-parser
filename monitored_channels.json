@@ -8,18 +8,130 @@
     "megagroup": false
   },
   {
-    "id": 1123462822,
-    "title": "Минченко. Регионы",
-    "username": "mcrepostregion",
-    "participants_count": 5241,
+    "id": 1483113222,
+    "title": "Новости Омска и Области",
+    "username": null,
+    "participants_count": 43162,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1069772626,
-    "title": "Пул N3",
-    "username": "dimsmirnov175",
-    "participants_count": 349922,
+    "id": 1105482093,
+    "title": "Политбюро 2.0",
+    "username": "politburo2",
+    "participants_count": 36647,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1660509596,
+    "title": "VG/Двач",
+    "username": "ru2chvg",
+    "participants_count": 185795,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1096776982,
+    "title": "НГС — новости Новосибирска",
+    "username": "ngs_news",
+    "participants_count": 125421,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1123462822,
+    "title": "Минченко. Регионы",
+    "username": "mcrepostregion",
+    "participants_count": 5242,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1049795479,
+    "title": "E1.RU | Новости Екатеринбурга",
+    "username": "e1_news",
+    "participants_count": 412088,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1394050290,
+    "title": "Раньше всех. Ну почти.",
+    "username": "bbbreaking",
+    "participants_count": 1971865,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1094392793,
+    "title": "Абу",
+    "username": "abuwtf",
+    "participants_count": 160283,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1539265884,
+    "title": "Новости Казани и Татарстана",
+    "username": "kazan_chat0",
+    "participants_count": 64891,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1117628569,
+    "title": "Mash",
+    "username": null,
+    "participants_count": 3302963,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1166834860,
+    "title": "Ньюсач/Двач",
+    "username": "ru2ch",
+    "participants_count": 587966,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1254661214,
+    "title": "Осторожно, новости",
+    "username": "ostorozhno_novosti",
+    "participants_count": 1608356,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1513669961,
+    "title": "SVTV NEWS — Либертарианское СМИ",
+    "username": "svtvnews",
+    "participants_count": 122858,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1288481277,
+    "title": "Москвач • Новости Москвы",
+    "username": "moscowach",
+    "participants_count": 5011205,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1441563903,
+    "title": "СМАРТЛАБ НОВОСТИ",
+    "username": "newssmartlab",
+    "participants_count": 62864,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1099860397,
+    "title": "РБК. Новости. Главное",
+    "username": "rbc_news",
+    "participants_count": 899362,
     "broadcast": true,
     "megagroup": false
   },
@@ -32,74 +144,10 @@
     "megagroup": false
   },
   {
-    "id": 1660509596,
-    "title": "VG/Двач",
-    "username": "ru2chvg",
-    "participants_count": 185808,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1038402501,
-    "title": "Коммерсантъ",
-    "username": "kommersant",
-    "participants_count": 266580,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1136626166,
-    "title": "Банкста",
-    "username": "banksta",
-    "participants_count": 416388,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1099860397,
-    "title": "РБК. Новости. Главное",
-    "username": "rbc_news",
-    "participants_count": 899361,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1477408271,
-    "title": "Bloomberg",
-    "username": "BIoomberg",
-    "participants_count": 72555,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1232469282,
-    "title": "Китай - Вавилов",
-    "username": "shuohuaxia",
-    "participants_count": 153427,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1559721053,
-    "title": "Mash на волне",
-    "username": "mash_na_volne",
-    "participants_count": 76121,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1513669961,
-    "title": "SVTV NEWS — Либертарианское СМИ",
-    "username": "svtvnews",
-    "participants_count": 122857,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1539265884,
-    "title": "Новости Казани и Татарстана",
-    "username": "kazan_chat0",
-    "participants_count": 64895,
+    "id": 1245824647,
+    "title": "Нижний Новгород Новости",
+    "username": "podslushano_chat52",
+    "participants_count": 43879,
     "broadcast": true,
     "megagroup": false
   },
@@ -107,103 +155,15 @@
     "id": 1115468824,
     "title": "Лента дня",
     "username": "lentadnya",
-    "participants_count": 346887,
+    "participants_count": 346998,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1441563903,
-    "title": "СМАРТЛАБ НОВОСТИ",
-    "username": "newssmartlab",
-    "participants_count": 62861,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1056054957,
-    "title": "NGS24.RU — Новости Красноярска",
-    "username": "ngs24_krsk",
-    "participants_count": 71562,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1166834860,
-    "title": "Ньюсач/Двач",
-    "username": "ru2ch",
-    "participants_count": 587991,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1245824647,
-    "title": "Нижний Новгород Новости",
-    "username": "podslushano_chat52",
-    "participants_count": 43880,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1117628569,
-    "title": "Mash",
-    "username": null,
-    "participants_count": 3303089,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1049795479,
-    "title": "E1.RU | Новости Екатеринбурга",
-    "username": "e1_news",
-    "participants_count": 412072,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1833807136,
-    "title": "ШЕЛЕСТ",
-    "username": "shelestlive",
-    "participants_count": 133527,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1343028414,
-    "title": "Анатолий Шарий",
-    "username": "ASupersharij",
-    "participants_count": 1476335,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1358614736,
-    "title": "Mash на Мойке",
-    "username": "mashmoyka",
-    "participants_count": 361490,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1394050290,
-    "title": "Раньше всех. Ну почти.",
-    "username": "bbbreaking",
-    "participants_count": 1971885,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1096776982,
-    "title": "НГС — новости Новосибирска",
-    "username": "ngs_news",
-    "participants_count": 125422,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1483113222,
-    "title": "Новости Омска и Области",
-    "username": null,
-    "participants_count": 43162,
+    "id": 1069772626,
+    "title": "Пул N3",
+    "username": "dimsmirnov175",
+    "participants_count": 349931,
     "broadcast": true,
     "megagroup": false
   },
@@ -211,23 +171,39 @@
     "id": 1378813139,
     "title": "Baza",
     "username": "bazabazon",
-    "participants_count": 1635615,
+    "participants_count": 1635574,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1036362176,
-    "title": "RT на русском",
-    "username": "rt_russian",
-    "participants_count": 1061329,
+    "id": 1358614736,
+    "title": "Mash на Мойке",
+    "username": "mashmoyka",
+    "participants_count": 361485,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1390102357,
-    "title": "«Зелёный» змий",
-    "username": "greenserpent",
-    "participants_count": 22393,
+    "id": 1052226869,
+    "title": "Фонтанка SPB Online",
+    "username": "fontankaspb",
+    "participants_count": 365390,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1136626166,
+    "title": "Банкста",
+    "username": "banksta",
+    "participants_count": 416384,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1038402501,
+    "title": "Коммерсантъ",
+    "username": "kommersant",
+    "participants_count": 266577,
     "broadcast": true,
     "megagroup": false
   },
@@ -240,26 +216,34 @@
     "megagroup": false
   },
   {
-    "id": 1052226869,
-    "title": "Фонтанка SPB Online",
-    "username": "fontankaspb",
-    "participants_count": 365392,
+    "id": 1529002404,
+    "title": "Kub Mash",
+    "username": "kub_mash",
+    "participants_count": 117725,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1288481277,
-    "title": "Москвач • Новости Москвы",
-    "username": "moscowach",
-    "participants_count": 5011791,
+    "id": 1036362176,
+    "title": "RT на русском",
+    "username": "rt_russian",
+    "participants_count": 1061316,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1254661214,
-    "title": "Осторожно, новости",
-    "username": "ostorozhno_novosti",
-    "participants_count": 1608391,
+    "id": 1343028414,
+    "title": "Анатолий Шарий",
+    "username": "ASupersharij",
+    "participants_count": 1476507,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1611342912,
+    "title": "Mash на Донбассе",
+    "username": "mash_donbass",
+    "participants_count": 54830,
     "broadcast": true,
     "megagroup": false
   },
@@ -267,15 +251,87 @@
     "id": 1315735637,
     "title": "СОЛОВЬЁВ",
     "username": "SolovievLive",
-    "participants_count": 1250990,
+    "participants_count": 1250962,
     "broadcast": true,
     "megagroup": false
   },
   {
-    "id": 1094392793,
-    "title": "Абу",
-    "username": "abuwtf",
-    "participants_count": 160297,
+    "id": 1232469282,
+    "title": "Китай - Вавилов",
+    "username": "shuohuaxia",
+    "participants_count": 153431,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1494885375,
+    "title": "Ni Mash",
+    "username": "mash_nimash",
+    "participants_count": 50006,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1477408271,
+    "title": "Bloomberg",
+    "username": "BIoomberg",
+    "participants_count": 72549,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1390102357,
+    "title": "«Зелёный» змий",
+    "username": "greenserpent",
+    "participants_count": 22393,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1056054957,
+    "title": "NGS24.RU — Новости Красноярска",
+    "username": "ngs24_krsk",
+    "participants_count": 71553,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1219938965,
+    "title": "Mash Iptash",
+    "username": "mash_iptash",
+    "participants_count": 78586,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1471614617,
+    "title": "Mash на спорте",
+    "username": "mashnasporte",
+    "participants_count": 66169,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1296840620,
+    "title": "Mash Gor",
+    "username": "mash_gor",
+    "participants_count": 55540,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1559721053,
+    "title": "Mash на волне",
+    "username": "mash_na_volne",
+    "participants_count": 76116,
+    "broadcast": true,
+    "megagroup": false
+  },
+  {
+    "id": 1833807136,
+    "title": "ШЕЛЕСТ",
+    "username": "shelestlive",
+    "participants_count": 133524,
     "broadcast": true,
     "megagroup": false
   },
@@ -283,7 +339,7 @@
     "id": 1145288248,
     "title": "GORODAD | NOVOKUZNETSK",
     "username": "gorodad",
-    "participants_count": 40965,
+    "participants_count": 40970,
     "broadcast": true,
     "megagroup": false
   },
@@ -296,50 +352,10 @@
     "megagroup": false
   },
   {
-    "id": 1611342912,
-    "title": "Mash на Донбассе",
-    "username": "mash_donbass",
-    "participants_count": 54834,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1529002404,
-    "title": "Kub Mash",
-    "username": "kub_mash",
-    "participants_count": 117735,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1219938965,
-    "title": "Mash Iptash",
-    "username": "mash_iptash",
-    "participants_count": 78587,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1494885375,
-    "title": "Ni Mash",
-    "username": "mash_nimash",
-    "participants_count": 50007,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1471614617,
-    "title": "Mash на спорте",
-    "username": "mashnasporte",
-    "participants_count": 66168,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
     "id": 1508868805,
     "title": "Mash Batash",
     "username": "mash_batash",
-    "participants_count": 59889,
+    "participants_count": 59887,
     "broadcast": true,
     "megagroup": false
   },
@@ -355,7 +371,7 @@
     "id": 1567747257,
     "title": "Amber Mash",
     "username": "amber_mash",
-    "participants_count": 42097,
+    "participants_count": 42100,
     "broadcast": true,
     "megagroup": false
   },
@@ -363,7 +379,7 @@
     "id": 1253781258,
     "title": "Amur Mash",
     "username": "amur_mash",
-    "participants_count": 59480,
+    "participants_count": 59481,
     "broadcast": true,
     "megagroup": false
   },
@@ -371,7 +387,7 @@
     "id": 1439829202,
     "title": "Mash Siberia",
     "username": "mash_siberia",
-    "participants_count": 59538,
+    "participants_count": 59536,
     "broadcast": true,
     "megagroup": false
   },
@@ -379,23 +395,7 @@
     "id": 1158574200,
     "title": "Kras Mash",
     "username": "kras_mash",
-    "participants_count": 54152,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1105482093,
-    "title": "Политбюро 2.0",
-    "username": "politburo2",
-    "participants_count": 36646,
-    "broadcast": true,
-    "megagroup": false
-  },
-  {
-    "id": 1296840620,
-    "title": "Mash Gor",
-    "username": "mash_gor",
-    "participants_count": 55544,
+    "participants_count": 54154,
     "broadcast": true,
     "megagroup": false
   },
