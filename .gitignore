@@ -1,2 +1,2 @@
 .env
-*.session
+telegram_forwarder_session.session.session
