@@ -112,7 +112,7 @@ class MessageFinisher:
             # Линейная интерполяция от 0 до 2.0 (большой штраф за дублирование)
             penalty = 0.0 + ((coincide_24hr - 0.8) / 0.2) * 2.0
         
-        return penalty
+        return round(penalty, 1)
 
     async def _process_top_posts(self):
         """
