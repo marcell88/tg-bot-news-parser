@@ -112,7 +112,7 @@ class MessageFinisher:
             # Линейная интерполяция от 0 до 2.0 (большой штраф за дублирование)
             penalty = 0.0 + ((coincide_24hr - 0.8) / 0.2) * 2.0
         
-        return round(penalty, 1)
+        return penalty
 
     async def _process_top_posts(self):
         """
@@ -152,7 +152,7 @@ class MessageFinisher:
                         coincide_24hr = post['coincide_24hr'] or 0.0
                         
                         # final_score = essence - max_fee*coincide_24hr
-                        final_score = essence - self._calculate_penalty(coincide_24hr)
+                        final_score = round(essence - self._calculate_penalty(coincide_24hr), 1)
                         
                         # Если где-то null или ошибка - ставим 0
                         if essence is None or coincide_24hr is None:
