@@ -350,7 +350,8 @@ class EmbedderService:
 
     async def _calculate_similarities(self, conn, current_post_id: int, current_embeddings: list) -> dict:
         """
-        Вычисляет максимальное сходство для каждого тега с предыдущими записями.
+        Вычисляет сходство для каждого тега с наиболее близкой предыдущей записью.
+        Находит запись с максимальным средним сходством по всем тегам и берет значения от нее.
         ТОЛЬКО с записями где id < current_post_id И final = TRUE.
         """
         try:
@@ -383,17 +384,10 @@ class EmbedderService:
             
             logging.info(f"Embedder: Найдено {len(previous_records)} предыдущих записей с final=TRUE для сравнения")
             
-            # Инициализируем максимальные значения сходства
-            max_similarities = {
-                'tag1_score': -1.0,
-                'tag2_score': -1.0,
-                'tag3_score': -1.0,
-                'tag4_score': -1.0,
-                'tag5_score': -1.0
-            }
+            best_record_similarities = None
+            best_average_similarity = -1.0
             
-            processed_count = 0
-            # Для каждой предыдущей записи вычисляем сходство по каждому тегу
+            # Для каждой предыдущей записи вычисляем сходство по всем тегам
             for record in previous_records:
                 try:
                     # Парсим вектора предыдущей записи ИЗ БД
@@ -401,45 +395,53 @@ class EmbedderService:
                     for i in range(1, 6):
                         vector_field = f'vector{i}'
                         vector_str = record[vector_field]
-                        
-                        # ОТЛАДКА: что мы получаем из БД
-                        if processed_count == 0 and i == 1:  # Только для первой записи первого вектора
-                            logging.info(f"Embedder DEBUG: Тип данных из БД для {vector_field}: {type(vector_str)}")
-                            if vector_str and len(str(vector_str)) > 100:
-                                logging.info(f"Embedder DEBUG: Первые 100 символов: {str(vector_str)[:100]}...")
-                        
                         prev_vector = self._parse_embedding_string(vector_str)
                         prev_vectors.append(prev_vector)
                     
-                    # Вычисляем сходство для каждого тега
+                    # Вычисляем сходство для каждого тега с текущей записью
+                    record_similarities = {}
+                    valid_similarities = []
+                    
                     for i, tag_name in enumerate(['tag1_score', 'tag2_score', 'tag3_score', 'tag4_score', 'tag5_score']):
                         if i < len(current_embeddings) and i < len(prev_vectors):
-                            # ОТЛАДКА: проверяем типы данных перед сравнением
-                            current_vec = current_embeddings[i]
-                            prev_vec = prev_vectors[i]
-                            
-                            if processed_count == 0 and i == 0:  # Только для первого сравнения
-                                logging.info(f"Embedder DEBUG: Тип current_embeddings[{i}]: {type(current_vec)}")
-                                logging.info(f"Embedder DEBUG: Тип prev_vectors[{i}]: {type(prev_vec)}")
-                                logging.info(f"Embedder DEBUG: Длина current: {len(current_vec)}, prev: {len(prev_vec)}")
-                                logging.info(f"Embedder DEBUG: Первые 3 элемента current: {current_vec[:3]}")
-                                logging.info(f"Embedder DEBUG: Первые 3 элемента prev: {prev_vec[:3]}")
-                            
                             similarity = self._calculate_vector_similarity(current_embeddings[i], prev_vectors[i])
+                            record_similarities[tag_name] = similarity
                             
-                            # Обновляем максимальное значение только если similarity != -1
+                            # Собираем только валидные (не отрицательные) значения для среднего
                             if similarity != -1.0:
-                                if max_similarities[tag_name] == -1.0 or similarity > max_similarities[tag_name]:
-                                    max_similarities[tag_name] = similarity
+                                valid_similarities.append(similarity)
                     
-                    processed_count += 1
-                            
+                    # Вычисляем среднее сходство для этой записи (только по валидным значениям)
+                    if valid_similarities:
+                        current_average = sum(valid_similarities) / len(valid_similarities)
+                    else:
+                        current_average = 0.0
+                    
+                    # Если нашли запись с лучшим средним сходством, сохраняем ее значения
+                    if current_average > best_average_similarity:
+                        best_average_similarity = current_average
+                        best_record_similarities = record_similarities
+                        logging.debug(f"Embedder: Найдена более близкая запись ID:{record['id']} со средним сходством: {current_average:.4f}")
+                        
                 except Exception as e:
                     logging.warning(f"Embedder: Ошибка обработки записи {record['id']}: {e}")
                     continue
             
-            logging.info(f"Embedder: Обработано {processed_count} записей с final=TRUE, максимальное сходство для ID:{current_post_id}: {max_similarities}")
-            return max_similarities
+            # Если не нашли ни одной подходящей записи, возвращаем значения по умолчанию
+            if best_record_similarities is None:
+                logging.info(f"Embedder: Не найдено подходящих записей с валидными сходствами для ID:{current_post_id}")
+                return {
+                    'tag1_score': -1.0,
+                    'tag2_score': -1.0,
+                    'tag3_score': -1.0,
+                    'tag4_score': -1.0,
+                    'tag5_score': -1.0
+                }
+            
+            logging.info(f"Embedder: Наиболее близкая запись найдена со средним сходством: {best_average_similarity:.4f}")
+            logging.info(f"Embedder: Значения сходства для ID:{current_post_id}: {best_record_similarities}")
+            
+            return best_record_similarities
             
         except Exception as e:
             logging.error(f"Embedder: Ошибка расчета сходства для ID:{current_post_id}: {e}")
