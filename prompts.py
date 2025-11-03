@@ -1,6 +1,12 @@
 # Константы для промптов, используемых в запросах к Large Language Models (LLM).
 from typing import Dict, Any
+import os
+from dotenv import load_dotenv
 
+# Получаем переменные с преобразованием к нужному типу
+ESSENCE_THRESHOLD = float(os.getenv('ESSENCE_THRESHOLD', 7.5))
+FINAL_SCORE_THRESHOLD = float(os.getenv('FINAL_SCORE_THRESHOLD', 8.5))
+CONTEXT_THRESHOLD = float(os.getenv('CONTEXT_THRESHOLD', 6))
 
 
 
@@ -217,8 +223,6 @@ CONTEXT_FILTRATION_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False
 }
 
-CONTEXT_THRESHOLD=6
-
 
 
 # --- 3. ТРЕТЬЯ ФИЛЬТРАЦИЯ - фильтруем по сути
@@ -391,8 +395,6 @@ ESSENCE_FILTRATION_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False
 }
 
-ESSENCE_THRESHOLD = 8.0
-FINAL_SCORE_THRESHOLD = 8.5
 
 TAGED_PROMPT = """
 
