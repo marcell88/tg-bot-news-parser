@@ -102,16 +102,13 @@ class MessageFinisher:
         - coincide_24hr от 0.5 до 0.7: штраф = 0
         - coincide_24hr от 0.7 до 1: рост штрафа с 0 до 2.0
         """
-        if coincide_24hr < 0.6:
-            # Линейная интерполяция от -1 до 0 (бонус за уникальность)
-            penalty = -1.0 + (coincide_24hr / 0.6) * 1.0
+        if coincide_24hr < 0.5:
+            penalty = -1.0
         elif coincide_24hr < 0.8:
-            # Нейтральная зона - нет ни бонуса, ни штрафа
-            penalty = 0.0
+            penalty = -1 + 10 * (coincide_24hr - 0.5)
         else:
-            # Линейная интерполяция от 0 до 2.0 (большой штраф за дублирование)
-            penalty = 0.0 + ((coincide_24hr - 0.8) / 0.2) * 2.0
-        
+            penalty = 2.0 
+               
         return penalty
 
     async def _process_top_posts(self):
