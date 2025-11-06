@@ -3,12 +3,20 @@ from typing import Dict, Any
 import os
 from dotenv import load_dotenv
 
+# Явно загружаем .env файл
+load_dotenv()
+
+# Проверяем, что переменные загружаются
+print("DEBUG: Все переменные окружения:", dict(os.environ))
+
 # Получаем переменные с преобразованием к нужному типу
 ESSENCE_THRESHOLD = float(os.getenv('ESSENCE_THRESHOLD', 7.5))
 FINAL_SCORE_THRESHOLD = float(os.getenv('FINAL_SCORE_THRESHOLD', 8.5))
 CONTEXT_THRESHOLD = float(os.getenv('CONTEXT_THRESHOLD', 6))
 
-
+print(f"DEBUG: ESSENCE_THRESHOLD = {ESSENCE_THRESHOLD}")
+print(f"DEBUG: FINAL_SCORE_THRESHOLD = {FINAL_SCORE_THRESHOLD}")
+print(f"DEBUG: CONTEXT_THRESHOLD = {CONTEXT_THRESHOLD}")
 
 # --- 1. ПЕРВАЯ ФИЛЬТРАЦИЯ - убираем плохие темы
 
