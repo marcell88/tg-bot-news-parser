@@ -7,7 +7,9 @@ from services.cleaner import main as run_cleaner
 from services.analyzer import main as run_analyzer
 from services.finisher import main as run_finisher
 from services.embedder import main as run_embedder
-from services.tager import main as run_tager  # <-- ДОБАВЛЕН ИМПОРТ
+from services.tager import main as run_tager
+from services.myth_news import main as run_myth
+from services.commentator import main as commentator
 from database.database import Database
 
 # Настраиваем логирование для точки входа.
@@ -49,6 +51,8 @@ class ServiceManager:
             ("Finisher", run_finisher),
             ("Tager", run_tager),
             ("Embedder", run_embedder),
+            ("Myth", run_myth),
+            ("Commentator", commentator),
 #            ("Stats", run_stats),
         ]
         

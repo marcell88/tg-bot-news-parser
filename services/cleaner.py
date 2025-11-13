@@ -29,6 +29,8 @@ class Config:
     RETENTION_DAYS = 7 
     # RETENTION_HOURS_TOP: Возраст записей для удаления из telegram_posts_top (в часах)
     RETENTION_HOURS_TOP = 24  # 3) для таблицы telegram_posts_top - старше 24 часов
+    # RETENTION_HOURS_TOP_TOP: Возраст записей для удаления из telegram_posts_top_top (в часах)
+    RETENTION_HOURS_TOP_TOP = 72  # для таблицы telegram_posts_top_top - старше 72 часов
 
 # --- Класс DBCleaner ---
 class DBCleaner:
@@ -44,9 +46,12 @@ class DBCleaner:
         self.retention_period_posts = timedelta(days=Config.RETENTION_DAYS)
         # Период хранения для telegram_posts_top (24 часа)
         self.retention_period_top = timedelta(hours=Config.RETENTION_HOURS_TOP)
+        # Период хранения для telegram_posts_top_top (72 часа)
+        self.retention_period_top_top = timedelta(hours=Config.RETENTION_HOURS_TOP_TOP)
         logging.info(f"Cleaner: Служба очистки настроена: интервал {Config.CLEANUP_INTERVAL_HOURS}ч, "
                     f"telegram_posts: {Config.RETENTION_DAYS} дней, "
-                    f"telegram_posts_top: {Config.RETENTION_HOURS_TOP} часов.")
+                    f"telegram_posts_top: {Config.RETENTION_HOURS_TOP} часов, "
+                    f"telegram_posts_top_top: {Config.RETENTION_HOURS_TOP_TOP} часов.")
 
     async def _setup_database(self):
         """Получает общий пул подключений из Database менеджера."""
@@ -61,27 +66,30 @@ class DBCleaner:
 
     async def clean_old_posts(self):
         """
-        Выполняет SQL-запрос для удаления записей из обеих таблиц:
+        Выполняет SQL-запрос для удаления записей из трех таблиц:
         1. telegram_posts: finished = TRUE и старше RETENTION_DAYS
         2. telegram_posts_top: finished = TRUE и старше RETENTION_HOURS_TOP
+        3. telegram_posts_top_top: finished = TRUE и старше RETENTION_HOURS_TOP_TOP
         """
         if not self.db_pool:
             logging.error("Cleaner: Невозможно выполнить очистку, пул БД не инициализирован.")
             return
 
-        # Определяем точки отсечения для обеих таблиц
+        # Определяем точки отсечения для всех таблиц
         cutoff_time_posts = datetime.now() - self.retention_period_posts
         cutoff_time_top = datetime.now() - self.retention_period_top
+        cutoff_time_top_top = datetime.now() - self.retention_period_top_top
         
         logging.info(f"Cleaner: Запуск очистки.")
         logging.info(f"Cleaner: telegram_posts - удаляем до {cutoff_time_posts.strftime('%Y-%m-%d %H:%M:%S')}")
         logging.info(f"Cleaner: telegram_posts_top - удаляем до {cutoff_time_top.strftime('%Y-%m-%d %H:%M:%S')}")
+        logging.info(f"Cleaner: telegram_posts_top_top - удаляем до {cutoff_time_top_top.strftime('%Y-%m-%d %H:%M:%S')}")
 
         total_deleted = 0
 
         try:
             async with self.db_pool.acquire() as conn:
-                # 2) Очистка таблицы telegram_posts
+                # 1) Очистка таблицы telegram_posts
                 result_posts = await conn.execute("""
                     DELETE FROM telegram_posts 
                     WHERE finished = TRUE AND post_time < $1
@@ -102,6 +110,17 @@ class DBCleaner:
                 deleted_top = result_top.split(' ')[1] if len(result_top.split(' ')) > 1 else '0'
                 total_deleted += int(deleted_top)
                 logging.info(f"Cleaner: Из telegram_posts_top удалено {deleted_top} записей.")
+
+                # 3) Очистка таблицы telegram_posts_top_top
+                result_top_top = await conn.execute("""
+                    DELETE FROM telegram_posts_top_top 
+                    WHERE finished = TRUE AND post_time < $1
+                """, cutoff_time_top_top)
+                
+                # Извлекаем количество удаленных строк из ответа
+                deleted_top_top = result_top_top.split(' ')[1] if len(result_top_top.split(' ')) > 1 else '0'
+                total_deleted += int(deleted_top_top)
+                logging.info(f"Cleaner: Из telegram_posts_top_top удалено {deleted_top_top} записей.")
 
                 logging.info(f"Cleaner: Очистка завершена. Всего удалено {total_deleted} записей.")
 

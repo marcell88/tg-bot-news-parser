@@ -142,7 +142,7 @@ class Database:
                         context_explain TEXT,
                         essence BOOLEAN,
                         essence_score REAL,
-                        essence_explain TEXT                    
+                        essence_explain TEXT       
                     );
                 """)
                 logging.info("✅ Таблица 'telegram_posts' создана/проверена")
@@ -187,7 +187,12 @@ class Database:
                         tag2_score REAL,
                         tag3_score REAL,
                         tag4_score REAL,
-                        tag5_score REAL
+                        tag5_score REAL,
+                                   
+                        text_short TEXT,
+                        myth BOOLEAN DEFAULT FALSE,
+                        myth_score REAL
+                                   
                     );
                 """)
                 logging.info("✅ Таблица 'telegram_posts_top' создана/проверена")
@@ -197,6 +202,47 @@ class Database:
                 
             except Exception as e:
                 logging.error(f"❌ Ошибка при работе с таблицей 'telegram_posts_top': {e}")
+                raise
+
+            try:
+                # Создаем таблицу для самых топовых сообщений (топ из топа)
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS telegram_posts_top_top (
+                        id BIGSERIAL PRIMARY KEY,
+                        post_time TIMESTAMP WITH TIME ZONE NOT NULL,
+                        text_content TEXT NOT NULL,
+                        text_short TEXT NOT NULL,
+                        message_link TEXT,
+                        finished BOOLEAN DEFAULT FALSE,
+                        analyzed BOOLEAN DEFAULT FALSE,
+
+                        total_score REAL,
+                        news_final_score REAL,
+
+                        comment_best TEXT,
+                        author_best TEXT,
+                        comment_score_best REAL,
+
+                        comment_1 TEXT,
+                        author_1 TEXT,
+                        comment_score_1 REAL,
+                                   
+                        comment_2 TEXT,
+                        author_2 TEXT,
+                        comment_score_2 REAL,
+                                   
+                        comment_3 TEXT,
+                        author_3 TEXT,
+                        comment_score_3 REAL
+                    );
+                """)
+                logging.info("✅ Таблица 'telegram_posts_top_top' создана/проверена")
+                
+                # Проверяем наличие всех столбцов в таблице самых топовых сообщений
+                await cls._check_table_columns(conn, 'telegram_posts_top_top', cls._get_top_top_table_columns())
+                
+            except Exception as e:
+                logging.error(f"❌ Ошибка при работе с таблицей 'telegram_posts_top_top': {e}")
                 raise
             
         cls._initialized = True
@@ -256,6 +302,40 @@ class Database:
             'tag3_score': 'REAL',
             'tag4_score': 'REAL',
             'tag5_score': 'REAL',
+
+            'text_short': 'TEXT',
+            'myth': 'BOOLEAN DEFAULT FALSE',
+            'myth_score': 'REAL'
+        }
+
+    @classmethod
+    def _get_top_top_table_columns(cls):
+        """Возвращает структуру столбцов для таблицы самых топовых сообщений."""
+        return {
+            'id': 'BIGSERIAL PRIMARY KEY',
+            'post_time': 'TIMESTAMP WITH TIME ZONE NOT NULL',
+            'text_content': 'TEXT NOT NULL',
+            'text_short': 'TEXT NOT NULL',
+            'message_link': 'TEXT',
+            'finished': 'BOOLEAN DEFAULT FALSE',
+            'analyzed': 'BOOLEAN DEFAULT FALSE',
+
+            'total_score': 'REAL',
+            'news_final_score': 'REAL',
+
+            'author_best': 'TEXT',
+            'comment_best': 'TEXT',
+            'comment_score_best': 'REAL',
+
+            'comment_1': 'TEXT',
+            'author_1': 'TEXT',
+            'comment_score_1': 'REAL',
+            'author_2': 'TEXT',
+            'comment_2': 'TEXT',
+            'comment_score_2': 'REAL',
+            'comment_3': 'TEXT',
+            'author_3': 'TEXT',
+            'comment_score_3': 'REAL'
         }
     
     @classmethod
