@@ -251,7 +251,7 @@ class MessageFinisher:
                         comment_score_best = post['comment_score_best']
                         
                         # Вычисляем total_score как среднегеометрическое
-                        total_score = self._calculate_geometric_mean(news_final_score, comment_score_best)
+                        total_score = comment_score_best
                         
                         # Обновляем запись в БД - сначала устанавливаем total_score
                         await conn.execute("""
