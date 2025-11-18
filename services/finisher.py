@@ -181,7 +181,7 @@ class MessageFinisher:
         if myth < 6:
             bonus = 0
         else:
-            bonus = 0 + ((1 - 0) / (10 - 6)) * (myth - 6)
+            bonus = 0 + ((2 - 0) / (10 - 6)) * (myth - 6)
 
         return bonus
 
