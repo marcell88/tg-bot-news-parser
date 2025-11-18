@@ -11,6 +11,7 @@ ESSENCE_THRESHOLD = float(os.getenv('ESSENCE_THRESHOLD', 7.5))
 ADJ_THRESHOLD = float(os.getenv('ADJ_THRESHOLD', 8.5))
 FINAL_SCORE_THRESHOLD = float(os.getenv('FINAL_SCORE_THRESHOLD', 8.5))
 CONTEXT_THRESHOLD = float(os.getenv('CONTEXT_THRESHOLD', 6))
+MIN_SCORE_THRESHOLD = float(os.getenv('MIN_SCORE_THRESHOLD', 8))
 
 
 # --- 1. ПЕРВАЯ ФИЛЬТРАЦИЯ - убираем плохие темы

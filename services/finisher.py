@@ -6,7 +6,7 @@ import aiohttp
 from datetime import datetime
 from database.database import Database
 from database.database_config import DatabaseConfig
-from prompts import FINAL_SCORE_THRESHOLD, ADJ_THRESHOLD
+from prompts import FINAL_SCORE_THRESHOLD, ADJ_THRESHOLD, MIN_SCORE_THRESHOLD
 import math  # Добавляем для математических операций
 
 
@@ -135,31 +135,41 @@ class MessageFinisher:
             logging.error(f"Finisher: Ошибка при форматировании сообщения для редактора: {e}")
             return ""
 
+
     async def _send_to_editor_bot(self, post_data: dict) -> bool:
         """
-        Отправляет сообщение боту-редактору если total_score >= FINAL_SCORE_THRESHOLD.
+        Отправляет сообщение боту-редактору если total_score >= FINAL_SCORE_THRESHOLD 
+        и comment_score_best >= MIN_SCORE_THRESHOLD.
         """
         total_score = post_data.get('total_score', 0) or 0
+        comment_score_best = post_data.get('comment_score_best', 0) or 0
         
+        # Проверка первого условия: total_score
         if total_score < FINAL_SCORE_THRESHOLD:
             logging.info(f"Finisher: Пост ID:{post_data['id']} не отправлен редактору - total_score {total_score} < {FINAL_SCORE_THRESHOLD}")
             return False
             
+        # Проверка второго условия: comment_score_best
+        if comment_score_best < MIN_SCORE_THRESHOLD:
+            logging.info(f"Finisher: Пост ID:{post_data['id']} не отправлен редактору - comment_score_best {comment_score_best} < {MIN_SCORE_THRESHOLD}")
+            return False
+                
         if not Config.EDITOR_BOT_API_KEY:
             logging.error("Finisher: EDITOR_BOT_API_KEY не настроен, отправка редактору невозможна")
             return False
-            
+                
         # Форматируем сообщение
         message_text = self._format_message_for_editor(post_data)
         if not message_text:
             logging.error(f"Finisher: Не удалось сформировать сообщение для редактора для поста ID:{post_data['id']}")
             return False
-            
+                
         # Используем EDITOR_BOT_CHAT_ID если указан, иначе отправляем самому боту
         chat_id = Config.EDITOR_BOT_CHAT_ID or Config.EDITOR_BOT_API_KEY.split(':')[0]
         
-        logging.info(f"Finisher: Отправка поста ID:{post_data['id']} боту-редактору (total_score: {total_score})")
+        logging.info(f"Finisher: Отправка поста ID:{post_data['id']} боту-редактору (total_score: {total_score}, comment_score_best: {comment_score_best})")
         return await self._send_telegram_message(chat_id, message_text, Config.EDITOR_BOT_API_KEY)
+
 
     def _calculate_penalty(self, coincide_24hr: float) -> float:
         """
@@ -214,11 +224,6 @@ class MessageFinisher:
     async def _process_top_top_posts(self):
         """
         Обрабатывает записи из telegram_posts_top_top.
-        
-        Для записей где finished=FALSE и analyzed=TRUE:
-        1. Вычисляет total_score как среднегеометрическое news_final_score и comment_score_best
-        2. Если total_score >= FINAL_SCORE_THRESHOLD - отправляет боту-редактору
-        3. Помечает finished = TRUE после обработки
         """
         if not self.db_pool:
             logging.error("Finisher: Невозможно выполнить обработку, пул БД не инициализирован.")
