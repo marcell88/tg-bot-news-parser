@@ -100,7 +100,7 @@ class TextShortener:
                                     prompt=MYTH_PROMPT,
                                     text=short_text,  # Используем сокращенный текст
                                     response_schema=MYTH_SCHEMA,
-                                    model_type='deepseek-reasoner',
+                                    model_type='deepseek-chat',
                                     temperature=0.1,
                                     tokens=2000
                                 )
