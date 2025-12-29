@@ -114,20 +114,33 @@ class MessageFinisher:
             comment_score_best = post_data.get('comment_score_best', 0) or 0
             total_score = post_data.get('total_score', 0) or 0
             
-            # Форматируем сообщение
-            message_parts = [
-                text_short,
-                "\n\n1111\n\n",
-                link,
-                "\n\n1111\n\n",
-                "[как бы] " + author_best.upper(),
-                "\n\n1111\n",
-                comment_best,
-                "\n\n1111\n",
-                f"{news_final_score}",
-                f"{comment_score_best}",
-                f"{total_score}"
-            ]
+            # Определяем формат сообщения в зависимости от comment_score_best
+            if comment_score_best >= MIN_SCORE_THRESHOLD:
+                # Полный формат с комментарием
+                message_parts = [
+                    text_short,
+                    "\n\n1111\n\n",
+                    link,
+                    "\n\n1111\n\n",
+                    "[как бы] " + author_best.upper(),
+                    "\n\n1111\n",
+                    comment_best,
+                    "\n\n1111\n",
+                    f"{news_final_score}",
+                    f"{comment_score_best}",
+                    f"{total_score}"
+                ]
+            else:
+                # Сокращенный формат без комментария
+                message_parts = [
+                    text_short,
+                    "\n\n1111\n\n",
+                    link,
+                    "\n\n1111\n",
+                    f"{news_final_score}",
+                    f"{comment_score_best}",
+                    f"{total_score}"
+                ]
             
             return "\n".join(message_parts)
             
@@ -135,30 +148,18 @@ class MessageFinisher:
             logging.error(f"Finisher: Ошибка при форматировании сообщения для редактора: {e}")
             return ""
 
-
     async def _send_to_editor_bot(self, post_data: dict) -> bool:
         """
-        Отправляет сообщение боту-редактору если total_score >= FINAL_SCORE_THRESHOLD 
-        и comment_score_best >= MIN_SCORE_THRESHOLD.
+        Отправляет сообщение боту-редактору.
         """
-        total_score = post_data.get('total_score', 0) or 0
         comment_score_best = post_data.get('comment_score_best', 0) or 0
-        
-        # Проверка первого условия: total_score
-        if total_score < FINAL_SCORE_THRESHOLD:
-            logging.info(f"Finisher: Пост ID:{post_data['id']} не отправлен редактору - total_score {total_score} < {FINAL_SCORE_THRESHOLD}")
-            return False
-            
-        # Проверка второго условия: comment_score_best
-        if comment_score_best < MIN_SCORE_THRESHOLD:
-            logging.info(f"Finisher: Пост ID:{post_data['id']} не отправлен редактору - comment_score_best {comment_score_best} < {MIN_SCORE_THRESHOLD}")
-            return False
+        total_score = post_data.get('total_score', 0) or 0
                 
         if not Config.EDITOR_BOT_API_KEY:
             logging.error("Finisher: EDITOR_BOT_API_KEY не настроен, отправка редактору невозможна")
             return False
                 
-        # Форматируем сообщение
+        # Форматируем сообщение в зависимости от comment_score_best
         message_text = self._format_message_for_editor(post_data)
         if not message_text:
             logging.error(f"Finisher: Не удалось сформировать сообщение для редактора для поста ID:{post_data['id']}")
