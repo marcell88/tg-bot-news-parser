@@ -34,6 +34,7 @@ class TopTopConfig:
     URL_APPROACH = os.getenv('URL_APPROACH') 
     URL_WRITE = os.getenv('URL_WRITE')
     URL_ADD_TO_TABLE = os.getenv('URL_ADD_TO_TABLE')
+    URL_ASSESS = os.getenv('URL_ASSESS')  # Добавлен URL для оценки
     
     API_HEADERS = {
         "Content-Type": "application/json"
@@ -133,9 +134,10 @@ class TopTopProcessor:
             logging.error(f"❌ Исключение при API запросе {step_name}: {e}")
             return None
 
-    async def _execute_three_step_request(self, text_content: str, request_number: int) -> dict:
+    async def _execute_four_step_request(self, text_content: str, request_number: int) -> dict:
         """
-        Выполняет три последовательных запроса для одного комментария.
+        Выполняет четыре последовательных запроса для одного комментария.
+        Теперь: AUTHOR -> APPROACH -> WRITE -> ASSESS
         """
         # Сохраняем исходный текст
         original_text = text_content
@@ -219,28 +221,64 @@ class TopTopProcessor:
         # Извлекаем первый элемент из списка
         if isinstance(write_result, list) and len(write_result) > 0:
             write_data = write_result[0]
-            if 'comment' in write_data and 'score' in write_data and 'author' in write_data:
-                logging.info(f"✅ TopTopProcessor: Тройной запрос #{request_number} УСПЕШНО завершен")
-                logging.info(f"   Author: {write_data['author']}")
-                logging.info(f"   Score: {write_data['score']}")
-                
-                return {
-                    'author': write_data['author'],
-                    'comment': write_data['comment'],
-                    'score': float(write_data['score'])
-                }
+            if 'comment' in write_data and 'author' in write_data:
+                write_text = write_data['comment']
+                write_author = write_data['author']
+                logging.info(f"✅ WRITE #{request_number}: получен rewrite текст")
+                logging.info(f"   Author: {write_author}")
             else:
                 logging.warning(f"❌ TopTopProcessor: Ошибка на шаге WRITE #{request_number}")
-                logging.warning(f"   Ожидались поля: 'comment', 'score', 'author'")
+                logging.warning(f"   Ожидались поля: 'comment', 'author'")
                 logging.warning(f"   Получено: {write_data}")
                 return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
         else:
             logging.warning(f"❌ TopTopProcessor: Ошибка на шаге WRITE #{request_number}")
             return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
+        
+        # Шаг 4: URL_ASSESS - оценка rewrite текста
+        assess_payload = {
+            "text": original_text,   # Исходный текст
+            "rewrite": write_text    # Текст полученный от WRITE
+        }
+        
+        assess_result = await self._make_api_request(
+            TopTopConfig.URL_ASSESS,
+            assess_payload,
+            f"ASSESS #{request_number}"
+        )
+        
+        if not assess_result:
+            logging.warning(f"❌ TopTopProcessor: Ошибка на шаге ASSESS #{request_number}")
+            return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
+        
+        # Извлекаем первый элемент из списка
+        if isinstance(assess_result, list) and len(assess_result) > 0:
+            assess_data = assess_result[0]
+            if 'score' in assess_data:
+                score = float(assess_data['score'])
+                logging.info(f"✅ ASSESS #{request_number}: получен score: {score}")
+                
+                logging.info(f"✅ TopTopProcessor: Четверной запрос #{request_number} УСПЕШНО завершен")
+                logging.info(f"   Author: {write_author}")
+                logging.info(f"   Score: {score}")
+                
+                return {
+                    'author': write_author,
+                    'comment': write_text,
+                    'score': score
+                }
+            else:
+                logging.warning(f"❌ TopTopProcessor: Ошибка на шаге ASSESS #{request_number}")
+                logging.warning(f"   Ожидалось поле: 'score'")
+                logging.warning(f"   Получено: {assess_data}")
+                return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
+        else:
+            logging.warning(f"❌ TopTopProcessor: Ошибка на шаге ASSESS #{request_number}")
+            return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
 
     async def _process_single_post(self, post_id: int, text_content: str, conn):
         """
-        Обрабатывает одну запись: делает три тройных запроса с ожиданием.
+        Обрабатывает одну запись: делает три четверных запроса с ожиданием.
         """
         # Логируем исходный текст из базы
         logging.info(f"\n📖 TopTopProcessor: Исходный текст из БД для поста ID:{post_id}")
@@ -248,14 +286,14 @@ class TopTopProcessor:
         
         comments_data = []
         
-        # Делаем три тройных запроса (каждый состоит из author->approach->write)
+        # Делаем три четверных запроса (каждый состоит из author->approach->write->assess)
         for i in range(3):
-            logging.info(f"🎯 TopTopProcessor: НАЧАЛО тройного запроса #{i+1} для поста ID:{post_id}")
+            logging.info(f"🎯 TopTopProcessor: НАЧАЛО четверного запроса #{i+1} для поста ID:{post_id}")
             
-            comment_result = await self._execute_three_step_request(text_content, i+1)
+            comment_result = await self._execute_four_step_request(text_content, i+1)
             comments_data.append(comment_result)
             
-            logging.info(f"🏁 TopTopProcessor: Тройной запрос #{i+1} завершен. Score: {comment_result['score']}\n")
+            logging.info(f"🏁 TopTopProcessor: Четверной запрос #{i+1} завершен. Score: {comment_result['score']}\n")
         
         # Находим лучший комментарий (с наибольшим score)
         best_comment = max(comments_data, key=lambda x: x['score'])
@@ -281,7 +319,7 @@ class TopTopProcessor:
         logging.info(f"   Лучший комментарий: score {best_comment['score']}")
         logging.info(f"   Автор: {best_comment['author']}\n")
         
-        # Шаг 4: Отправляем лучшего автора в URL_ADD_TO_TABLE
+        # Шаг 5: Отправляем лучшего автора в URL_ADD_TO_TABLE
         await self._send_best_author_to_table(best_comment['author'], post_id)
 
     async def _send_best_author_to_table(self, best_author: str, post_id: int):
