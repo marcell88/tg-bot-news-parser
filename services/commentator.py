@@ -85,10 +85,16 @@ class TopTopProcessor:
         try:
             await self._setup_http_session()
             
+            # Логируем payload для отладки
             logging.info(f"\n\n════════════════════════════════════════")
             logging.info(f"TopTopProcessor: ОТПРАВКА ЗАПРОСА {step_name}")
             logging.info(f"URL: {url}")
             logging.info(f"Payload keys: {list(payload.keys())}")
+            
+            # Логируем типы данных в payload
+            for key, value in payload.items():
+                logging.info(f"   {key}: type={type(value).__name__}, len={len(str(value)) if hasattr(value, '__len__') else 'N/A'}")
+            
             logging.info(f"════════════════════════════════════════\n")
             
             async with self.session.post(
@@ -132,6 +138,9 @@ class TopTopProcessor:
                     
         except Exception as e:
             logging.error(f"❌ Исключение при API запросе {step_name}: {e}")
+            logging.error(f"   URL: {url}")
+            logging.error(f"   Payload: {payload}")
+            logging.error(f"   Step: {step_name}")
             return None
 
     async def _execute_four_step_request(self, text_content: str, request_number: int) -> dict:
@@ -162,7 +171,7 @@ class TopTopProcessor:
         if isinstance(author_result, list) and len(author_result) > 0:
             author_data = author_result[0]
             if 'author' in author_data:
-                author_name = author_data['author']
+                author_name = str(author_data['author'])  # Преобразуем в строку
                 logging.info(f"✅ AUTHOR #{request_number}: получен автор '{author_name}'")
             else:
                 logging.warning(f"❌ TopTopProcessor: Ошибка на шаге AUTHOR #{request_number}")
@@ -176,8 +185,8 @@ class TopTopProcessor:
         
         # Шаг 2: URL_APPROACH - передаем исходный текст + автора, получаем device, structure, goal, idea
         approach_payload = {
-            "text": original_text,  # Исходный текст
-            "author": author_name   # Полученный автор
+            "text": str(original_text),  # Преобразуем в строку
+            "author": str(author_name)   # Преобразуем в строку
         }
         
         approach_result = await self._make_api_request(
@@ -199,13 +208,14 @@ class TopTopProcessor:
             return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
         
         # Шаг 3: URL_WRITE - передаем исходный текст, автора + данные от APPROACH
+        # Убеждаемся, что все значения являются строками
         write_payload = {
-            "text": original_text,  # Исходный текст
-            "author": author_name,  # Полученный автор
-            "device": approach_data.get('device', ''),
-            "structure": approach_data.get('structure', ''),
-            "goal": approach_data.get('goal', ''),
-            "idea": approach_data.get('idea', '')
+            "text": str(original_text),  # Исходный текст
+            "author": str(author_name),  # Полученный автор
+            "device": str(approach_data.get('device', '')),
+            "structure": str(approach_data.get('structure', '')),
+            "goal": str(approach_data.get('goal', '')),
+            "idea": str(approach_data.get('idea', ''))
         }
         
         write_result = await self._make_api_request(
@@ -222,10 +232,11 @@ class TopTopProcessor:
         if isinstance(write_result, list) and len(write_result) > 0:
             write_data = write_result[0]
             if 'comment' in write_data and 'author' in write_data:
-                write_text = write_data['comment']
-                write_author = write_data['author']
+                write_text = str(write_data['comment'])  # Преобразуем в строку
+                write_author = str(write_data['author'])  # Преобразуем в строку
                 logging.info(f"✅ WRITE #{request_number}: получен rewrite текст")
                 logging.info(f"   Author: {write_author}")
+                logging.info(f"   Text length: {len(write_text)}")
             else:
                 logging.warning(f"❌ TopTopProcessor: Ошибка на шаге WRITE #{request_number}")
                 logging.warning(f"   Ожидались поля: 'comment', 'author'")
@@ -236,10 +247,16 @@ class TopTopProcessor:
             return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
         
         # Шаг 4: URL_ASSESS - оценка rewrite текста
+        # Убеждаемся, что все значения являются строками
         assess_payload = {
-            "text": original_text,   # Исходный текст
-            "rewrite": write_text    # Текст полученный от WRITE
+            "text": str(original_text),   # Исходный текст
+            "rewrite": str(write_text)    # Текст полученный от WRITE
         }
+        
+        # Логируем типы данных перед отправкой ASSESS
+        logging.info(f"🔍 Проверка типов данных для ASSESS #{request_number}:")
+        logging.info(f"   text type: {type(assess_payload['text']).__name__}")
+        logging.info(f"   rewrite type: {type(assess_payload['rewrite']).__name__}")
         
         assess_result = await self._make_api_request(
             TopTopConfig.URL_ASSESS,
@@ -255,18 +272,23 @@ class TopTopProcessor:
         if isinstance(assess_result, list) and len(assess_result) > 0:
             assess_data = assess_result[0]
             if 'score' in assess_data:
-                score = float(assess_data['score'])
-                logging.info(f"✅ ASSESS #{request_number}: получен score: {score}")
-                
-                logging.info(f"✅ TopTopProcessor: Четверной запрос #{request_number} УСПЕШНО завершен")
-                logging.info(f"   Author: {write_author}")
-                logging.info(f"   Score: {score}")
-                
-                return {
-                    'author': write_author,
-                    'comment': write_text,
-                    'score': score
-                }
+                try:
+                    score = float(assess_data['score'])
+                    logging.info(f"✅ ASSESS #{request_number}: получен score: {score}")
+                    
+                    logging.info(f"✅ TopTopProcessor: Четверной запрос #{request_number} УСПЕШНО завершен")
+                    logging.info(f"   Author: {write_author}")
+                    logging.info(f"   Score: {score}")
+                    
+                    return {
+                        'author': write_author,
+                        'comment': write_text,
+                        'score': score
+                    }
+                except (ValueError, TypeError) as e:
+                    logging.error(f"❌ TopTopProcessor: Ошибка преобразования score: {e}")
+                    logging.error(f"   Score value: {assess_data['score']}")
+                    return {'author': 'нет', 'comment': 'нет', 'score': 0.0}
             else:
                 logging.warning(f"❌ TopTopProcessor: Ошибка на шаге ASSESS #{request_number}")
                 logging.warning(f"   Ожидалось поле: 'score'")
@@ -282,7 +304,8 @@ class TopTopProcessor:
         """
         # Логируем исходный текст из базы
         logging.info(f"\n📖 TopTopProcessor: Исходный текст из БД для поста ID:{post_id}")
-        logging.info(f"   Длина: {len(text_content)} символов\n")
+        logging.info(f"   Длина: {len(text_content)} символов")
+        logging.info(f"   Тип: {type(text_content).__name__}\n")
         
         comments_data = []
         
@@ -309,10 +332,10 @@ class TopTopProcessor:
                 analyzed = TRUE
             WHERE id = $13
         """,
-        comments_data[0]['author'], comments_data[0]['comment'], comments_data[0]['score'],
-        comments_data[1]['author'], comments_data[1]['comment'], comments_data[1]['score'],
-        comments_data[2]['author'], comments_data[2]['comment'], comments_data[2]['score'],
-        best_comment['author'], best_comment['comment'], best_comment['score'],
+        str(comments_data[0]['author']), str(comments_data[0]['comment']), float(comments_data[0]['score']),
+        str(comments_data[1]['author']), str(comments_data[1]['comment']), float(comments_data[1]['score']),
+        str(comments_data[2]['author']), str(comments_data[2]['comment']), float(comments_data[2]['score']),
+        str(best_comment['author']), str(best_comment['comment']), float(best_comment['score']),
         post_id)
         
         logging.info(f"\n🎉 TopTopProcessor: Пост ID:{post_id} успешно обработан!")
@@ -320,7 +343,7 @@ class TopTopProcessor:
         logging.info(f"   Автор: {best_comment['author']}\n")
         
         # Шаг 5: Отправляем лучшего автора в URL_ADD_TO_TABLE
-        await self._send_best_author_to_table(best_comment['author'], post_id)
+        await self._send_best_author_to_table(str(best_comment['author']), post_id)
 
     async def _send_best_author_to_table(self, best_author: str, post_id: int):
         """
@@ -332,12 +355,13 @@ class TopTopProcessor:
         
         try:
             payload = {
-                'author': best_author
+                'author': str(best_author)  # Преобразуем в строку
             }
             
             logging.info(f"\n📤 TopTopProcessor: Отправка лучшего автора в URL_ADD_TO_TABLE")
             logging.info(f"   Post ID: {post_id}")
             logging.info(f"   Author: {best_author}")
+            logging.info(f"   Author type: {type(best_author).__name__}")
             
             result = await self._make_api_request(
                 TopTopConfig.URL_ADD_TO_TABLE,
@@ -382,6 +406,11 @@ class TopTopProcessor:
                 for post in posts_to_process:
                     post_id = post['id']
                     text_content = post['text_content']
+                    
+                    # Убеждаемся, что text_content является строкой
+                    if not isinstance(text_content, str):
+                        logging.warning(f"⚠️  TopTopProcessor: text_content для поста ID:{post_id} не является строкой. Тип: {type(text_content)}")
+                        text_content = str(text_content)
                     
                     try:
                         await self._process_single_post(post_id, text_content, conn)
