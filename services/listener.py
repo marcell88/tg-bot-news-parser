@@ -31,11 +31,6 @@ class Config:
     API_ID = 25491744
     API_HASH = '0643451ea49fcac6f5a8697005714e33'
 
-    # PRIVATE_GROUP_ID - ID приватной группы, сообщения из которой будут пересылаться боту-анализатору.
-    PRIVATE_GROUP_ID = -1003130125238
-    # BOT_USERNAME - юзернейм бота, который должен обрабатывать сообщения из приватной группы.
-    BOT_USERNAME = '@trigger_prosa_bot'
-
     # CHANNELS_FILE - имя файла, в котором хранится список мониторящихся каналов.
     CHANNELS_FILE = 'monitored_channels.json'
 
@@ -52,8 +47,6 @@ class Config:
     DB_NAME = DatabaseConfig.DB_NAME
     DB_USER = DatabaseConfig.DB_USER
     DB_PASS = DatabaseConfig.DB_PASS
-    
-    # -----------------------------------------------------------------
 
 
 # --- Класс TelegramListener ---
@@ -66,8 +59,6 @@ class TelegramListener:
     """
     def __init__(self, client: TelegramClient):
             self.client = client
-            self.bot_entity = None 
-            self.private_group_entity = None
             self.monitored_channel_identifiers = self._load_monitored_channels() 
             self.db_pool = None 
             self.last_channels_update = None
@@ -220,22 +211,6 @@ class TelegramListener:
         except Exception as e:
             logging.error(f"Ошибка при сохранении сообщения в базу данных: {e}")
 
-    async def _resolve_entities(self): 
-        """
-        Получает объекты (Entity) для бота и приватной группы 
-        по их ID/юзернеймам.
-        """
-        try:
-            self.bot_entity = await self.client.get_entity(Config.BOT_USERNAME)
-            logging.info(f"Успешно подключились к боту: {Config.BOT_USERNAME}")
-            
-            self.private_group_entity = await self.client.get_entity(Config.PRIVATE_GROUP_ID)
-            logging.info(f"Успешно подключились к приватной группе: {getattr(self.private_group_entity, 'title', Config.PRIVATE_GROUP_ID)}")
-            
-        except Exception as e:
-            logging.error(f"Ошибка доступа к одной из сущностей: {e}")
-            raise
-
     async def _get_original_message_link(self, chat_entity, message_id: int) -> str | None:
         """
         Генерирует постоянную ссылку на сообщение.
@@ -288,26 +263,6 @@ class TelegramListener:
         
         logging.info(f"Файл {Config.CHANNELS_FILE} не найден. Будет создан при первом обновлении.")
         return set()
-
-    async def _private_group_message_handler(self, event: events.NewMessage.Event):
-        """
-        Обработчик сообщений, пришедших из приватной группы (Config.PRIVATE_GROUP_ID).
-        Эти сообщения пересылаются напрямую боту-анализатору.
-        """
-        try:
-            if event.chat_id != Config.PRIVATE_GROUP_ID: return
-            message = event.message
-            text_content = message.text or message.caption or ""
-            if not text_content.strip(): return
-            logging.info(f"Обнаружено сообщение в приватной группе: {text_content[:100]}...")
-            await self.client.send_message(
-                entity=self.bot_entity,
-                message=text_content.strip(),
-                link_preview=False
-            )
-            logging.info(f"Сообщение из приватной группы переслано боту {Config.BOT_USERNAME}")
-        except Exception as e:
-            logging.error(f"Ошибка при обработке сообщения из приватной группы: {e}", exc_info=True)
 
     async def _message_event_handler(self, event: events.NewMessage.Event):
         """
@@ -384,18 +339,14 @@ class TelegramListener:
     async def start_monitoring(self):
         """
         Главный метод запуска: 
-        1. Разрешает все сущности (чаты/боты).
-        2. Настраивает БД.
-        3. Добавляет обработчики событий Telegram.
-        4. Запускает фоновые задачи.
+        1. Настраивает БД.
+        2. Добавляет обработчики событий Telegram.
+        3. Запускает фоновые задачи.
         """
-        await self._resolve_entities() 
         await self._setup_database() 
         
+        # Добавляем только основной обработчик сообщений
         self.client.add_event_handler(self._message_event_handler, events.NewMessage())
-        self.client.add_event_handler(self._private_group_message_handler, events.NewMessage(
-            chats=[Config.PRIVATE_GROUP_ID]
-        ))
         
         # Запускаем фоновую задачу обновления каналов
         asyncio.create_task(self._channels_update_loop())

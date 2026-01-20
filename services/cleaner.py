@@ -28,7 +28,7 @@ class Config:
     # RETENTION_DAYS: Возраст записей для удаления (в днях), если finished=TRUE
     RETENTION_DAYS = 7 
     # RETENTION_HOURS_TOP: Возраст записей для удаления из telegram_posts_top (в часах)
-    RETENTION_HOURS_TOP = 24  # 3) для таблицы telegram_posts_top - старше 24 часов
+    RETENTION_HOURS_TOP = 72  # 3) для таблицы telegram_posts_top - старше 24 часов
     # RETENTION_HOURS_TOP_TOP: Возраст записей для удаления из telegram_posts_top_top (в часах)
     RETENTION_HOURS_TOP_TOP = 72  # для таблицы telegram_posts_top_top - старше 72 часов
 
