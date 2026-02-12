@@ -121,7 +121,7 @@ class TextShortener:
                 lt_topics, lt_moods = lt_data
 
                 lt_topics_str = "\n".join([f"- {item['topic']} (вес: {item['weight']:.2f})" for item in lt_topics])
-                lt_moods_str = "\n".join([f"- {item['topic']} (вес: {item['weight']:.2f})" for item in lt_moods])
+                lt_moods_str = "\n".join([f"- {item['mood']} (вес: {item['weight']:.2f})" for item in lt_moods])
 
                 logging.info(f"Shortener: Найдено {len(posts_to_shorten)} записей для сокращения текста.")
                 
