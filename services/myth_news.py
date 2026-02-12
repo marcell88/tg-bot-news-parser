@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import asyncpg
+import json
+from typing import List, Optional, Dict, Any, Tuple
 from database.database import Database
 from database.database_config import DatabaseConfig
 from msg_processing.deepseek_service import call_deepseek_api
-from prompts import SHORTEN_PROMPT, SHORTEN_SCHEMA, MYTH_PROMPT, MYTH_SCHEMA
+from prompts import SHORTEN_PROMPT, SHORTEN_SCHEMA, MYTH_PROMPT, MYTH_SCHEMA, LT_PROMPT, LT_SCHEMA
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -43,6 +45,47 @@ class TextShortener:
             logging.critical(f"Shortener: Ошибка при настройке базы данных: {e}")
             raise
 
+    async def _get_current_lt_data(self, conn) -> Optional[Tuple[List[Dict], List[Dict]]]:
+        """Получает текущие LT-данные из таблицы state"""
+        try:
+            query = """
+            SELECT "lt-topic", "lt-mood" 
+            FROM state 
+            ORDER BY id DESC 
+            LIMIT 1
+            """
+            
+            row = await conn.fetchrow(query)
+            if not row:
+                return None
+            
+            # Парсим JSON данные
+            lt_topics = []
+            lt_moods = []
+            
+            if row['lt-topic']:
+                for item in row['lt-topic']:
+                    try:
+                        lt_topics.append(json.loads(item))
+                    except:
+                        continue
+            
+            if row['lt-mood']:
+                for item in row['lt-mood']:
+                    try:
+                        lt_moods.append(json.loads(item))
+                    except:
+                        continue
+            
+            if lt_topics or lt_moods:
+                logging.debug(f"📊 Загружены LT-данные: {len(lt_topics)} тем, {len(lt_moods)} настроений")
+            
+            return lt_topics, lt_moods
+            
+        except Exception as e:
+            logging.debug(f"Ошибка при получении LT-данных: {e}")
+            return None
+
     async def _process_shorten_texts(self):
         """
         Обрабатывает записи из telegram_posts_top где myth = FALSE.
@@ -54,6 +97,7 @@ class TextShortener:
 
         try:
             async with self.db_pool.acquire() as conn:
+
                 # Выборка записей где myth = FALSE
                 posts_to_shorten = await conn.fetch("""
                     SELECT id, text_content
@@ -62,10 +106,22 @@ class TextShortener:
                     ORDER BY id ASC 
                     LIMIT $1
                 """, ShortenConfig.BATCH_SIZE)
-            
+
                 if not posts_to_shorten:
                     logging.debug("Shortener: Не найдено записей для сокращения текста.")
                     return
+            
+                # Берем текущее распределение  LT тем и настроения
+                lt_data = await self._get_current_lt_data(conn)
+
+                if not lt_data:
+                    logging.debug("⏳ Нет LT-данных для оценки, ждем...")
+                    return
+                
+                lt_topics, lt_moods = lt_data
+
+                lt_topics_str = "\n".join([f"- {item['topic']} (вес: {item['weight']:.2f})" for item in lt_topics])
+                lt_moods_str = "\n".join([f"- {item['topic']} (вес: {item['weight']:.2f})" for item in lt_moods])
 
                 logging.info(f"Shortener: Найдено {len(posts_to_shorten)} записей для сокращения текста.")
                 
@@ -115,23 +171,47 @@ class TextShortener:
                                 logging.error(f"Shortener: Ошибка при оценке мифичности для поста ID:{post_id}: {e}")
                                 myth_score = 0.0
 
+                        # 3) Третий запрос: оценка диверсификации тем и настроения
+                        lt_score = 0.0
+                        if short_text != "ошибка":  # Только если первый запрос успешен
+                            try:
+                                lt_score = await call_deepseek_api(
+                                    prompt=LT_PROMPT,
+                                    text=f"Текущие LT-темы с весами (частота):\n{lt_topics_str}\n\nТекущие LT-настроения с весами (частота):\n{lt_moods_str}\n\nНовое сообщение: {short_text}",
+                                    response_schema=LT_SCHEMA,
+                                    model_type='deepseek-chat',
+                                    temperature=0.1,
+                                    tokens=1000
+                                )
+                                
+                                if lt_score and 'lt_score' in lt_score:
+                                    lt_score = float(lt_score['myth_score'])
+                                    logging.info(f"Shortener: Оценка мифичности для поста ID:{post_id}: {myth_score}")
+                                else:
+                                    logging.warning(f"Shortener: Не удалось получить оценку мифичности для поста ID:{post_id}")
+                            
+                            except Exception as e:
+                                logging.error(f"Shortener: Ошибка при оценке мифичности для поста ID:{post_id}: {e}")
+                                lt_score = 0.0
+
                         # Обновляем запись в БД
                         await conn.execute("""
                             UPDATE telegram_posts_top 
-                            SET text_short = $1, myth_score = $2, myth = TRUE
-                            WHERE id = $3
-                        """, short_text, myth_score, post_id)
+                            SET text_short = $1, myth_score = $2, lt_score = $3, myth = TRUE
+                            WHERE id = $4
+                        """, short_text, myth_score, lt_score, post_id)
                         
                         logging.info(f"Shortener: Пост ID:{post_id} полностью обработан. "
                                    f"Сокращенный текст: {len(short_text)} символов, "
-                                   f"Оценка мифичности: {myth_score}")
+                                   f"Оценка диверсификации: {lt_score} символов, "
+                                   f"Оценка мифичности: {myth_score}"),                    
 
                     except Exception as e:
                         logging.error(f"Shortener: Ошибка обработки записи ID:{post_id}: {e}")
                         # Записываем "ошибка" в случае исключения
                         await conn.execute("""
                             UPDATE telegram_posts_top 
-                            SET text_short = 'ошибка', myth_score = 0, myth = TRUE
+                            SET text_short = 'ошибка', myth_score = 0, lt_score = 0, myth = TRUE
                             WHERE id = $1
                         """, post_id)
 

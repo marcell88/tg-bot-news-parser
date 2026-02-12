@@ -196,31 +196,16 @@ class MessageFinisher:
 
         return bonus
 
-    def _calculate_geometric_mean(self, news_final_score: float, comment_score_best: float) -> float:
+    def _calculate_lt_bonus(self, lt_score: float) -> float:
         """
-        Вычисляет среднегеометрическое news_final_score и comment_score_best.
-        Округляет до одного знака после точки.
-        
-        Если один из параметров None, возвращает 0.0.
+        Вычисляет бонус для final_score на основе lt_score.
         """
-        if news_final_score is None or comment_score_best is None:
-            return 0.0
-            
-        try:
-            # Вычисляем среднегеометрическое
-            product = news_final_score * comment_score_best
-            if product < 0:
-                # Если произведение отрицательное, берем модуль и потом возвращаем знак
-                geometric_mean = -math.sqrt(abs(product))
-            else:
-                geometric_mean = math.sqrt(product)
-            
-            # Округляем до одного знака после точки
-            return round(geometric_mean, 1)
-            
-        except Exception as e:
-            logging.error(f"Finisher: Ошибка при вычислении среднегеометрического: {e}")
-            return 0.0
+        if lt_score < 5:
+            bonus = 0
+        else:
+            bonus = 0 + ((2 - 0) / (10 - 5)) * (lt_score - 5)
+
+        return bonus
 
     async def _process_top_top_posts(self):
         """
@@ -356,7 +341,7 @@ class MessageFinisher:
                 # 1-2) Выборка записей из telegram_posts_top где analyzed = TRUE, а finished = FALSE
                 posts_to_process = await conn.fetch("""
                     SELECT id, post_time, text_content, text_short, message_link, 
-                           essence, coincide_24hr, myth_score
+                           essence, coincide_24hr, myth_score, lt_score
                     FROM telegram_posts_top 
                     WHERE analyzed = TRUE AND myth = TRUE AND finished = FALSE
                     ORDER BY id ASC 
@@ -377,12 +362,13 @@ class MessageFinisher:
                         essence = post['essence'] or 0.0  # ИСПРАВЛЕНИЕ: essence вместо essence_score
                         coincide_24hr = post['coincide_24hr'] or 0.0
                         myth = post['myth_score'] or 0.0
+                        lt = post['lt_score'] or 0.0
                         
                         # final_score = essence - max_fee*coincide_24hr
-                        final_score = round(essence - self._calculate_penalty(coincide_24hr) + self._calculate_bonus(myth), 1)
+                        final_score = round(essence - self._calculate_penalty(coincide_24hr) + self._calculate_bonus(myth) + self._calculate_lt_bonus(lt), 1)
                         
                         # Если где-то null или ошибка - ставим 0
-                        if essence is None or coincide_24hr is None or myth is None:
+                        if essence is None or coincide_24hr is None or myth is None or lt is None:
                             final_score = 0.0
                         
                         final = final_score >= ADJ_THRESHOLD
