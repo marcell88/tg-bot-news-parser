@@ -177,7 +177,7 @@ class TextShortener:
                             try:
                                 lt_score = await call_deepseek_api(
                                     prompt=LT_PROMPT,
-                                    text=f"Текущие LT-темы с весами (частота):\n{lt_topics_str}\n\nТекущие LT-настроения с весами (частота):\n{lt_moods_str}\n\nНовое сообщение: {short_text}",
+                                    text=f"Текущие LT-темы с весами (частота):\n{lt_topics_str}\n\nТекущие LT-настроения с весами (частота):\n{lt_moods_str}\n\nНовое сообщение:\n{short_text}",
                                     response_schema=LT_SCHEMA,
                                     model_type='deepseek-chat',
                                     temperature=0.1,
@@ -188,10 +188,10 @@ class TextShortener:
                                     lt_score = float(lt_score['myth_score'])
                                     logging.info(f"Shortener: Оценка мифичности для поста ID:{post_id}: {myth_score}")
                                 else:
-                                    logging.warning(f"Shortener: Не удалось получить оценку мифичности для поста ID:{post_id}")
+                                    logging.warning(f"Shortener: Не удалось получить оценку дивесифицированности для поста ID:{post_id}")
                             
                             except Exception as e:
-                                logging.error(f"Shortener: Ошибка при оценке мифичности для поста ID:{post_id}: {e}")
+                                logging.error(f"Shortener: Ошибка при оценке дивесифицированности для поста ID:{post_id}: {e}")
                                 lt_score = 0.0
 
                         # Обновляем запись в БД

@@ -65,7 +65,7 @@ async def call_deepseek_api(
         # Запрос состоит из двух частей: системный промпт и пользовательский текст.
         "messages": [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": f"Анализируемый текст: ```{text}```"}
+            {"role": "user", "content": f"Анализируемый текст: ```{prompt + '\n' + text}```"}
         ],
         # Настройки для гарантированного JSON-ответа
         "tool_choice": {"type": "function", "function": {"name": "analyze_message"}},
