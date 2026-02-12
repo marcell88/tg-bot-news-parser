@@ -34,7 +34,6 @@ async def call_deepseek_api(
     model_type: str,
     temperature: float = 0.7,
     tokens: int = 500,
-    # НОВЫЙ ПАРАМЕТР: Позволяет отключить проверку SSL-сертификата (полезно для прокси/корпоративных сетей)
     verify_ssl: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """

@@ -92,24 +92,23 @@ class TextAnalyzer:
                     
                     # Формальная фильтрация: первыичный отсев и контекст
                     logging.info(f"Analyzer: начинаем формальную фильтрацию для:{post_id}...")
-                    filter_initial, filter_initial_explain, subject_score, object_score, which_score, action_score, time_place_score, how_score, reason_score, consequences_score, context_explain = await process_message_by_form(
+                    filter_initial, filter_initial_explain = await process_message_by_form(
                         post_id, text
                     )
 
-                    context_array = [ subject_score, object_score, which_score, action_score, time_place_score, how_score, reason_score, consequences_score ]
-                    context_score = sum(context_array) / len (context_array)
-                    context = context_score >= CONTEXT_THRESHOLD
-
+                    # Заглушка 
+                    context_score = 10
+                    context = True
+                    context_explain = "Не проводили"
 
                     # Фильтрация по сути: первыичный отсев и контекст
                     if context and filter_initial:
                         logging.info(f"Analyzer: начинаем фильтрацию по сути для:{post_id}...")
 
-                        emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score, essence_explain = await process_message_by_essence(
+                        essence_score, essence_explain = await process_message_by_essence(
                             post_id, text
                         )
-                        essence_array = [emotional_score, visual_score, heroes_score, actual_score, drama_score, context_depth_score, universal_score, symbolic_score, viral_score, narrative_score]
-                        essence_score = round(sum(essence_array) / len (essence_array), 1)
+
                         essence = (essence_score >= ESSENCE_THRESHOLD)
 
                     else:

@@ -1,18 +1,12 @@
 import asyncio
-# deque (double-ended queue) используется для эффективной работы с очередью (быстрое добавление и удаление с концов).
 from collections import deque 
 from datetime import datetime, timedelta
-# TelegramClient - основной класс для взаимодействия с API Telegram.
-# events - для обработки событий (например, новых сообщений).
 from telethon import TelegramClient, events
-# Типы данных Telegram, используемые для разбора сущностей и сообщений.
 from telethon.tl.types import Message, Channel, User, PeerChannel, PeerUser
-# StringSession позволяет сохранять и восстанавливать сессию в виде строки.
 from telethon.sessions import StringSession
 import logging
 import json
 import os 
-# asyncpg - асинхронный драйвер PostgreSQL.
 import asyncpg 
 from database.database import Database
 from database.database_config import DatabaseConfig
