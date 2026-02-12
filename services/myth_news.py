@@ -185,7 +185,7 @@ class TextShortener:
                                 )
                                 
                                 if lt_score and 'lt_score' in lt_score:
-                                    lt_score = float(lt_score['myth_score'])
+                                    lt_score = float(lt_score['lt_score'])
                                     logging.info(f"Shortener: Оценка мифичности для поста ID:{post_id}: {myth_score}")
                                 else:
                                     logging.warning(f"Shortener: Не удалось получить оценку дивесифицированности для поста ID:{post_id}")
