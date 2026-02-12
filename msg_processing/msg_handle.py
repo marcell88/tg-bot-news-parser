@@ -65,16 +65,7 @@ async def process_message_by_form(post_id: int, text_content: str) -> Tuple[bool
 async def process_message_by_essence(post_id: int, text_content: str) -> Tuple[float, float, str]:
 
     # Инициализируем значения по умолчанию
-    emotional_score: int = 0
-    visual_score: int = 0
-    heroes_score: int = 0
-    actual_score: int = 0
-    drama_score: int = 0
-    context_depth_score: int = 0
-    universal_score: int = 0
-    symbolic_score: int = 0
-    viral_score: int = 0
-    narrative_score: int = 0
+    essence_score: int = 0
     essence_explain: str = "Анализ по сути не выполнен"
     
 
