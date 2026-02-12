@@ -189,10 +189,10 @@ class MessageFinisher:
         """
         Вычисляет бонус для final_score на основе myth.
         """
-        if myth < 6:
+        if myth < 5:
             bonus = 0
         else:
-            bonus = 0 + ((2 - 0) / (10 - 6)) * (myth - 6)
+            bonus = 0 + ((2 - 0) / (10 - 5)) * (myth - 5)
 
         return bonus
 
