@@ -34,8 +34,8 @@ async def process_message_by_form(post_id: int, text_content: str) -> Tuple[bool
             prompt=FILTER_INITIAL,
             text=text_content,
             response_schema=FILTER_INITIAL_SCHEMA,
-            model_type='deepseek-reasoner',
-            temperature=0.0
+            model_type='deepseek-chat',
+            temperature=0.2
         )
         # -----------------------------
 
@@ -86,7 +86,7 @@ async def process_message_by_essence(post_id: int, text_content: str) -> Tuple[f
             text=text_content,
             response_schema=ESSENCE_FILTRATION_SCHEMA,
             model_type='deepseek-chat',
-            temperature=0.3,
+            temperature=0.5,
             tokens=3000
         )
         # -----------------------------
