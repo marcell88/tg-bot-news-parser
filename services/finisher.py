@@ -179,9 +179,9 @@ class MessageFinisher:
         if coincide_24hr < 0.5:
             penalty = -0.5
         elif coincide_24hr < 0.8:
-            penalty = -0.5 + ((2 - (-0.5)) / (0.8 - 0.5)) * (coincide_24hr - 0.5)
+            penalty = -0.5 + ((5 - (-0.5)) / (0.8 - 0.5)) * (coincide_24hr - 0.5)
         else:
-            penalty = 2.0
+            penalty = 5.0
 
         return penalty
 
