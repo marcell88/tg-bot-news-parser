@@ -10,6 +10,7 @@ from services.embedder import main as run_embedder
 from services.tager import main as run_tager
 from services.myth_news import main as run_myth
 from services.commentator import main as commentator
+from services.stats import main as run_stats
 from database.database import Database
 
 # Настраиваем логирование для точки входа.
@@ -53,7 +54,7 @@ class ServiceManager:
             ("Embedder", run_embedder),
             ("Myth", run_myth),
             ("Commentator", commentator),
-#            ("Stats", run_stats),
+            ("Stats", run_stats),
         ]
         
         for name, service_func in services:
