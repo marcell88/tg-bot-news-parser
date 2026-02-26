@@ -101,6 +101,45 @@ class MessageFinisher:
             logging.error(f"Finisher: Исключение при отправке сообщения в Telegram: {e}")
             return False
 
+    async def _send_telegram_message_with_keyboard(self, chat_id: str, text: str, keyboard: dict, bot_token: str = None) -> bool:
+        """
+        Отправляет сообщение в Telegram группу с inline-клавиатурой.
+        
+        Возвращает True если сообщение отправлено успешно, False в случае ошибки.
+        """
+        token_to_use = bot_token or Config.TG_BOT_API_KEY
+        if not token_to_use:
+            logging.error("Finisher: Токен бота не настроен, отправка сообщения невозможна")
+            return False
+            
+        if not chat_id:
+            logging.error("Finisher: chat_id не указан, отправка сообщения невозможна")
+            return False
+            
+        try:
+            await self._setup_http_session()
+            
+            url = f"https://api.telegram.org/bot{token_to_use}/sendMessage"
+            payload = {
+                'chat_id': chat_id,
+                'text': text,
+                'parse_mode': 'HTML',
+                'reply_markup': keyboard
+            }
+            
+            async with self.session.post(url, json=payload) as response:
+                if response.status == 200:
+                    logging.info(f"Finisher: Сообщение с клавиатурой успешно отправлено в группу {chat_id}")
+                    return True
+                else:
+                    error_text = await response.text()
+                    logging.error(f"Finisher: Ошибка отправки сообщения с клавиатурой. Status: {response.status}, Error: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logging.error(f"Finisher: Исключение при отправке сообщения с клавиатурой в Telegram: {e}")
+            return False
+
     def _format_message_for_editor(self, post_data: dict) -> str:
         """
         Форматирует сообщение для отправки боту-редактору.
@@ -150,7 +189,7 @@ class MessageFinisher:
 
     async def _send_to_editor_bot(self, post_data: dict) -> bool:
         """
-        Отправляет сообщение боту-редактору.
+        Отправляет сообщение боту-редактору с inline-кнопками.
         """
         comment_score_best = post_data.get('comment_score_best', 0) or 0
         total_score = post_data.get('total_score', 0) or 0
@@ -168,8 +207,20 @@ class MessageFinisher:
         # Используем EDITOR_BOT_CHAT_ID если указан, иначе отправляем самому боту
         chat_id = Config.EDITOR_BOT_CHAT_ID or Config.EDITOR_BOT_API_KEY.split(':')[0]
         
-        logging.info(f"Finisher: Отправка поста ID:{post_data['id']} боту-редактору (total_score: {total_score}, comment_score_best: {comment_score_best})")
-        return await self._send_telegram_message(chat_id, message_text, Config.EDITOR_BOT_API_KEY)
+        # Создаем inline-клавиатуру с кнопками
+        record_id = post_data['id']
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "Добавить", "callback_data": f"btn_add_{record_id}"}],
+                [{"text": "Без комментария", "callback_data": f"btn_short_{record_id}"}],
+                [{"text": "Удалить", "callback_data": f"btn_delete_{record_id}"}]
+            ]
+        }
+        
+        logging.info(f"Finisher: Отправка поста ID:{post_data['id']} боту-редактору с inline-кнопками (total_score: {total_score}, comment_score_best: {comment_score_best})")
+        
+        # Отправляем сообщение с клавиатурой
+        return await self._send_telegram_message_with_keyboard(chat_id, message_text, keyboard, Config.EDITOR_BOT_API_KEY)
 
 
     def _calculate_penalty(self, coincide_24hr: float) -> float:
