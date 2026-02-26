@@ -54,7 +54,7 @@ class ServiceManager:
             ("Embedder", run_embedder),
             ("Myth", run_myth),
             ("Commentator", commentator),
-            ("Stats", run_stats),
+#            ("Stats", run_stats),
         ]
         
         for name, service_func in services:
