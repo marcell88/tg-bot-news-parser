@@ -136,7 +136,7 @@ class TextShortener:
                             text=text_content,
                             response_schema=SHORTEN_SCHEMA,
                             model_type='deepseek-chat',
-                            temperature=0.1,
+                            temperature=0.5,
                             tokens=500
                         )
                         
