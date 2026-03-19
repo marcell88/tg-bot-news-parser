@@ -136,8 +136,8 @@ class TextShortener:
                             text=text_content,
                             response_schema=SHORTEN_SCHEMA,
                             model_type='deepseek-chat',
-                            temperature=0.4,
-                            tokens=500
+                            temperature=0.1,
+                            tokens=1000
                         )
                         
                         short_text = "ошибка"
